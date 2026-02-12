@@ -49,7 +49,7 @@ def _get_silence_fallback(cache_dir: Path, chunk_size: int = 8192):
         yield data[i : i + chunk_size]
 
 
-def stream_generator(scheduler, chunk_size: int = 8192, cache_dir: Path | None = None):
+def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None = None):
     """Бесконечный генератор: читает сегменты и отдаёт байты. При паузе — тишина."""
     cache_dir = cache_dir or Path("cache")
     while True:
@@ -128,8 +128,8 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
 
             _log("Connected, starting stream...")
             sock.settimeout(120)
-            # Дроссель: ~128 kbps MP3 = 16 KB/s — чтобы не переполнять Icecast
-            BYTES_PER_SEC = 16000
+            # Дроссель: 256 kbps = 32 KB/s (покрывает большинство MP3)
+            BYTES_PER_SEC = 32000
             for chunk in gen:
                 sock.sendall(chunk)
                 time.sleep(len(chunk) / BYTES_PER_SEC)
