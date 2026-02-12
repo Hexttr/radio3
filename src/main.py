@@ -13,6 +13,7 @@ import yaml
 from flask import Flask, Response, send_from_directory
 
 from .scheduler import Scheduler
+from .track_parser import parse_track
 
 APP_DIR = Path(__file__).resolve().parent
 ROOT_DIR = APP_DIR.parent
@@ -57,14 +58,27 @@ def create_app() -> Flask:
         if not path.exists():
             return "", 204
         data = path.read_bytes()
-        return Response(
-            data,
-            mimetype="audio/mpeg",
-            headers={
-                "Cache-Control": "no-store",
-                "Content-Length": str(len(data)),
-            },
-        )
+
+        # Метаданные для фронта: X-Segment-Type, X-Artist, X-Title
+        parent = path.parent.name
+        if parent == "news":
+            seg_type, artist, title = "news", "", ""
+        elif parent == "weather":
+            seg_type, artist, title = "weather", "", ""
+        elif parent in ("dj", "system"):
+            seg_type, artist, title = "dj", "", ""
+        else:
+            seg_type = "track"
+            artist, title = parse_track(path)
+
+        headers = {
+            "Cache-Control": "no-store",
+            "Content-Length": str(len(data)),
+            "X-Segment-Type": seg_type,
+            "X-Artist": artist,
+            "X-Title": title,
+        }
+        return Response(data, mimetype="audio/mpeg", headers=headers)
 
     return app
 

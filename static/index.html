@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">
-  <title>AI Radio</title>
+  <title>NAVO RADIO</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -20,67 +20,174 @@
     }
     .container {
       text-align: center;
-      padding: 2rem;
+      padding: 1.5rem 2rem;
+      width: 100%;
+      max-width: 900px;
+    }
+    .eq-wrap {
+      width: 100%;
+      align-self: stretch;
+      position: relative;
     }
     h1 {
-      font-size: 2rem;
-      font-weight: 300;
-      margin: 0 0 0.5rem;
-      letter-spacing: 0.1em;
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin: 0 0 2rem;
+      letter-spacing: 0.15em;
+      color: #a855f7;
+      text-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
     }
-    .subtitle {
-      opacity: 0.7;
-      font-size: 0.95rem;
-      margin-bottom: 2rem;
+    .eq-wrap {
+      position: relative;
+      width: 100%;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
     }
-    .player-wrap {
-      background: rgba(255,255,255,0.05);
-      border-radius: 16px;
-      padding: 2rem;
-      max-width: 400px;
-      margin: 0 auto;
+    .equalizer {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 3px;
+      width: 100%;
+      height: 80px;
+      padding: 0 2rem;
     }
-    .btn {
-      padding: 0.75rem 2rem;
-      font-size: 1rem;
+    .eq-bar {
+      flex: 1;
+      min-width: 6px;
+      max-width: 24px;
+      height: 8px;
+      background: linear-gradient(to top, #7c3aed, #a855f7);
+      border-radius: 4px 4px 0 0;
+      transition: height 0.05s ease-out;
+    }
+    .play-btn {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 72px;
+      height: 72px;
       border: none;
-      border-radius: 8px;
-      background: #e94560;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
       color: white;
+      font-size: 1.5rem;
       cursor: pointer;
-      transition: background 0.2s;
+      box-shadow: 0 4px 20px rgba(168, 85, 247, 0.5), 0 0 0 4px rgba(168, 85, 247, 0.2);
+      transition: transform 0.2s, box-shadow 0.2s;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    .btn:hover { background: #d63852; }
-    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-    .status {
-      margin-top: 1rem;
-      font-size: 0.9rem;
-      opacity: 0.8;
+    .play-btn:hover {
+      transform: translate(-50%, -50%) scale(1.08);
+      box-shadow: 0 6px 28px rgba(168, 85, 247, 0.6);
     }
-    .status.playing { color: #4ade80; }
-    .status.paused { color: #fbbf24; }
-    .status.error { color: #f87171; }
+    .play-btn:active {
+      transform: translate(-50%, -50%) scale(0.98);
+    }
+    .now-playing {
+      font-size: 0.95rem;
+      opacity: 0.9;
+      min-height: 1.4em;
+    }
+    .now-playing .label { color: #a78bfa; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>AI Radio</h1>
-    <p class="subtitle">Music · DJ · News · Weather</p>
-    <div class="player-wrap">
-      <button id="playBtn" class="btn">▶ Listen live</button>
-      <p id="status" class="status">Click to start</p>
-    </div>
+    <h1>NAVO RADIO</h1>
+  </div>
+  <div class="eq-wrap">
+    <div class="equalizer" id="equalizer"></div>
+    <button id="playBtn" class="play-btn" title="Включить">▶</button>
+  </div>
+  <div class="container">
+    <p id="nowPlaying" class="now-playing"><span class="label">Сейчас играет</span> — нажмите Play</p>
   </div>
   <script>
     const playBtn = document.getElementById('playBtn');
-    const status = document.getElementById('status');
+    const nowPlaying = document.getElementById('nowPlaying');
+    const equalizer = document.getElementById('equalizer');
 
+    const BAR_COUNT = 32;
     let playing = false;
+    let muted = false;
+    let currentAudio = null;
     let preloaded = null;
+    let audioContext = null;
+    let analyser = null;
+    let currentSource = null;
+    let animationId = null;
 
-    function setStatus(text, state = '') {
-      status.textContent = text;
-      status.className = 'status ' + state;
+    // Создаём полоски эквалайзера
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const bar = document.createElement('div');
+      bar.className = 'eq-bar';
+      bar.dataset.i = i;
+      equalizer.appendChild(bar);
+    }
+    const bars = equalizer.querySelectorAll('.eq-bar');
+
+    function setNowPlaying(segmentType, artist, title) {
+      const label = nowPlaying.querySelector('.label');
+      if (segmentType === 'track' && artist && title) {
+        label.textContent = 'Сейчас играет';
+        nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — ' + (artist + ' — ' + title);
+      } else if (segmentType === 'news') {
+        nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — Новости';
+      } else if (segmentType === 'weather') {
+        nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — Погода';
+      } else if (segmentType === 'dj') {
+        nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — Диджей';
+      } else {
+        nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — ' + (artist && title ? artist + ' — ' + title : '…');
+      }
+    }
+
+    function updateEqualizer(freqData) {
+      if (!freqData || freqData.length === 0) return;
+      const step = Math.floor(freqData.length / BAR_COUNT);
+      bars.forEach((bar, i) => {
+        const idx = Math.min(i * step, freqData.length - 1);
+        const val = freqData[idx] || 0;
+        const h = Math.max(6, 8 + (val / 255) * 70);
+        bar.style.height = h + 'px';
+      });
+    }
+
+    function idleEqualizer() {
+      const t = Date.now() / 200;
+      bars.forEach((bar, i) => {
+        const wave = Math.sin(t + i * 0.3) * 0.5 + 0.5;
+        const h = 8 + wave * 25;
+        bar.style.height = h + 'px';
+      });
+      animationId = requestAnimationFrame(idleEqualizer);
+    }
+
+    function stopIdleEqualizer() {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+    }
+
+    function runEqualizerLoop() {
+      if (!analyser || muted) return;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      function tick() {
+        if (!playing || muted) return;
+        analyser.getByteFrequencyData(data);
+        updateEqualizer(data);
+        animationId = requestAnimationFrame(tick);
+      }
+      tick();
     }
 
     function revokeUrl(url) {
@@ -88,13 +195,45 @@
     }
 
     async function startPlayback() {
+      if (playing && !muted) return;
+      if (muted && currentAudio) {
+        muted = false;
+        playBtn.textContent = '■';
+        playBtn.title = 'Остановить';
+        currentAudio.play();
+        runEqualizerLoop();
+        return;
+      }
       playing = true;
-      playBtn.textContent = '🔊 On air';
-      playBtn.disabled = true;
-      setStatus('On air', 'playing');
+      muted = false;
+      playBtn.textContent = '■';
+      playBtn.title = 'Остановить';
+      stopIdleEqualizer();
       await preloadNext();
       playPreloaded();
     }
+
+    function stopPlayback() {
+      muted = true;
+      playBtn.textContent = '▶';
+      playBtn.title = 'Включить';
+      if (currentAudio) {
+        currentAudio.pause();
+      }
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+      idleEqualizer();
+    }
+
+    playBtn.onclick = () => {
+      if (playing && !muted) {
+        stopPlayback();
+      } else {
+        startPlayback();
+      }
+    };
 
     async function preloadNext() {
       while (playing) {
@@ -108,13 +247,29 @@
             await new Promise(r => setTimeout(r, 1000));
             continue;
           }
+          const type = res.headers.get('X-Segment-Type') || 'track';
+          const artist = res.headers.get('X-Artist') || '';
+          const title = res.headers.get('X-Title') || '';
           const blob = await res.blob();
-          preloaded = { url: URL.createObjectURL(blob) };
+          preloaded = { url: URL.createObjectURL(blob), type, artist, title };
           return;
         } catch (e) {
           await new Promise(r => setTimeout(r, 500));
         }
       }
+    }
+
+    function connectAudioToAnalyser(audio) {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.6;
+        analyser.connect(audioContext.destination);
+      }
+      if (currentSource) currentSource.disconnect();
+      currentSource = audioContext.createMediaElementSource(audio);
+      currentSource.connect(analyser);
     }
 
     function playPreloaded() {
@@ -123,23 +278,34 @@
         setTimeout(playPreloaded, 100);
         return;
       }
-      const { url } = preloaded;
+      const { url, type, artist, title } = preloaded;
       preloaded = null;
       preloadNext();
 
       const audio = new Audio(url);
+      currentAudio = audio;
+
       audio.onended = () => {
         revokeUrl(url);
-        playPreloaded();
+        if (playing && !muted) playPreloaded();
       };
       audio.onerror = () => {
         revokeUrl(url);
-        playPreloaded();
+        if (playing && !muted) playPreloaded();
       };
-      audio.play();
+
+      if (playing && !muted) {
+        connectAudioToAnalyser(audio);
+        if (audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
+        setNowPlaying(type, artist, title);
+        audio.play();
+        runEqualizerLoop();
+      }
     }
 
-    playBtn.onclick = () => startPlayback();
+    if (!playing) idleEqualizer();
   </script>
 </body>
 </html>

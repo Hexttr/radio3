@@ -45,6 +45,7 @@ radio3/
 
 ## Конфигурация (config.yaml)
 
+- `language` — **ru** | **en** | **tj** (диджей, новости, погода)
 - `region.city` — город для погоды и новостей
 - `intervals.news_minutes` — интервал новостей (180 мин)
 - `intervals.weather_minutes` — интервал погоды (240 мин)

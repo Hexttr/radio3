@@ -37,13 +37,13 @@ def _generate_elevenlabs(text: str, voice_id: str, model_id: str, api_key: str, 
         output_path.write_bytes(bytes(audio))
 
 
-def generate_tts(text: str, cache_dir: Path, config: dict) -> Path:
+def generate_tts(text: str, cache_dir: Path, config: dict, cache_salt: str = "") -> Path:
     """
-    Generate TTS mp3. Caches by text hash.
+    Generate TTS mp3. Caches by text hash (+ salt для новостей/погоды — свежесть).
     Config: provider, voice, rate, volume (Edge) | voice_id, model_id, api_key_env (ElevenLabs)
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
-    key = hashlib.md5(text.encode("utf-8")).hexdigest()
+    key = hashlib.md5((text + cache_salt).encode("utf-8")).hexdigest()
     output_path = cache_dir / f"{key}.mp3"
 
     if output_path.exists():

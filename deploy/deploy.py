@@ -100,7 +100,7 @@ User=root
 WorkingDirectory={APP_DIR}
 Environment="PATH={APP_DIR}/venv/bin"
 EnvironmentFile={APP_DIR}/.env
-ExecStart={APP_DIR}/venv/bin/gunicorn -w 1 -b 0.0.0.0:5000 --timeout 300 wsgi:app
+        ExecStart={APP_DIR}/venv/bin/gunicorn -w 1 -b 127.0.0.1:5000 --timeout 300 wsgi:app
 Restart=always
 RestartSec=5
 
@@ -120,15 +120,51 @@ WantedBy=multi-user.target
             f"systemctl restart ai-radio",
         ], "Systemd")
 
-        # 6. Firewall (ufw)
+        # 6. Nginx + HTTPS (домен novoradio.com)
+        domain = os.environ.get("DEPLOY_DOMAIN", "novoradio.com")
+        email = os.environ.get("DEPLOY_EMAIL", "admin@novoradio.com")
+
         run_commands(client, [
-            "ufw allow 5000/tcp 2>/dev/null || true",
+            "apt-get install -y -qq nginx certbot python3-certbot-nginx",
+        ], "Nginx + Certbot")
+
+        nginx_conf = f"""server {{
+    listen 80;
+    server_name {domain} www.{domain};
+    location / {{
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }}
+}}
+"""
+        sftp = client.open_sftp()
+        with sftp.open("/etc/nginx/sites-available/ai-radio", "w") as f:
+            f.write(nginx_conf)
+        sftp.close()
+
+        run_commands(client, [
+            "ln -sf /etc/nginx/sites-available/ai-radio /etc/nginx/sites-enabled/",
+            "rm -f /etc/nginx/sites-enabled/default",
+            "nginx -t && systemctl reload nginx",
+        ], "Nginx config")
+
+        run_commands(client, [
+            f"certbot --nginx -d {domain} -d www.{domain} --non-interactive --agree-tos -m {email} 2>/dev/null || true",
+        ], "SSL certificate")
+
+        # 7. Firewall (ufw)
+        run_commands(client, [
             "ufw allow 80/tcp 2>/dev/null || true",
+            "ufw allow 443/tcp 2>/dev/null || true",
             "ufw --force enable 2>/dev/null || true",
         ])
 
         print("\n[OK] Deploy complete.")
-        print(f"  Stream: http://{host}:5000")
+        print(f"  https://{domain}")
         print(f"  Add mp3 to {APP_DIR}/music/ on server")
 
     finally:

@@ -5,6 +5,7 @@
 import random
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from queue import Queue, Empty
 
@@ -104,10 +105,10 @@ class Scheduler:
             return True
         return False
 
-    def _add_tts(self, text: str, subdir: str = "dj") -> Path | None:
+    def _add_tts(self, text: str, subdir: str = "dj", cache_salt: str = "") -> Path | None:
         cache_sub = self.cache_dir / subdir
         try:
-            return generate_tts(text, cache_sub, self.tts_config)
+            return generate_tts(text, cache_sub, self.tts_config, cache_salt)
         except Exception:
             return None
 
@@ -123,7 +124,8 @@ class Scheduler:
             if trans_path:
                 self.segment_queue.put(trans_path)
             text = fetch_news(language=self.language)
-            path = self._add_tts(text, "news")
+            salt = datetime.now().strftime("%Y-%m-%d-%H")
+            path = self._add_tts(text, "news", salt)
             if path:
                 self.segment_queue.put(path)
             return

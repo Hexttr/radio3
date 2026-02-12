@@ -44,7 +44,9 @@ python deploy/upload_music.py
 
 - **Эфир:** http://IP_SERVER:5000
 - **Музыка:** загрузите mp3 в `/opt/ai-radio/music/` или используйте `upload_music.py`
-- **Groq:** `.env` копируется автоматически (если есть локально)
+- **Groq / ElevenLabs:** `.env` копируется автоматически (если есть локально)
+
+**Домен и HTTPS:** `DEPLOY_DOMAIN=novoradio.com` (по умолчанию), `DEPLOY_EMAIL=admin@novoradio.com` — для Let's Encrypt
 
 ## Ручные команды на сервере
 
