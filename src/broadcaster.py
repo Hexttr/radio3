@@ -44,7 +44,7 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
         "Content-Type": "audio/mpeg",
         "Ice-Public": "1",
         "Ice-Name": name,
-        "Ice-Description": "NAVO RADIO — 24/7 AI Radio",
+        "Ice-Description": "NAVO RADIO 24/7 AI Radio",
     }
     gen = stream_generator(scheduler)
     while True:
