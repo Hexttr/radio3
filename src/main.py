@@ -46,7 +46,10 @@ def create_app() -> Flask:
 
     @app.route("/")
     def index():
-        return send_from_directory(app.static_folder, "index.html")
+        r = send_from_directory(app.static_folder, "index.html")
+        r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        r.headers["Pragma"] = "no-cache"
+        return r
 
     @app.route("/live")
     def live_proxy():
