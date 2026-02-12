@@ -17,7 +17,7 @@ def _get_client() -> Optional["Groq"]:
     return None
 
 
-def get_dj_comment(artist: str, title: str, city: str = "London") -> str:
+def get_dj_comment(artist: str, title: str, city: str = "Dushanbe") -> str:
     """
     Short comment about the track: a fact about the artist or song.
     2-3 phrases, conversational.

@@ -8,10 +8,10 @@ cache_dir: "cache"
 
 # Region (city for weather and news)
 region:
-  city: "London"
-  timezone: "Europe/London"
-  latitude: 51.5074
-  longitude: -0.1278
+  city: "Dushanbe"
+  timezone: "Asia/Dushanbe"
+  latitude: 38.56
+  longitude: 68.78
 
 # Интервалы (минуты)
 intervals:

@@ -36,10 +36,10 @@ class Scheduler:
         self._last_weather_at: float = -999
 
         region = config.get("region", {})
-        self.city = region.get("city", "London")
-        self.lat = region.get("latitude", 51.5074)
-        self.lon = region.get("longitude", -0.1278)
-        self.timezone = region.get("timezone", "Europe/London")
+        self.city = region.get("city", "Dushanbe")
+        self.lat = region.get("latitude", 38.56)
+        self.lon = region.get("longitude", 68.78)
+        self.timezone = region.get("timezone", "Asia/Dushanbe")
         intervals = config.get("intervals", {})
         self.news_minutes = intervals.get("news_minutes", 180)
         self.weather_minutes = intervals.get("weather_minutes", 240)

@@ -31,7 +31,7 @@ WEATHER_CODES = {
 }
 
 
-def fetch_weather(latitude: float = 51.5074, longitude: float = -0.1278, city: str = "London", timezone: str = "Europe/London") -> str:
+def fetch_weather(latitude: float = 38.56, longitude: float = 68.78, city: str = "Dushanbe", timezone: str = "Asia/Dushanbe") -> str:
     """
     Get current weather via Open-Meteo.
     Returns text for TTS.
