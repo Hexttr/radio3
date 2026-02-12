@@ -35,8 +35,8 @@ def parse_track(filepath: Path) -> tuple[str, str]:
                     artist, title = parts[0].strip(), parts[1].strip()
                     break
         if not artist:
-            artist = "Неизвестный исполнитель"
+            artist = "Unknown Artist"
         if not title:
-            title = stem or "Без названия"
+            title = stem or "Untitled"
 
-    return (artist or "Неизвестный исполнитель", title or "Без названия")
+    return (artist or "Unknown Artist", title or "Untitled")

@@ -17,14 +17,14 @@ def _get_client() -> Optional["Groq"]:
     return None
 
 
-def get_dj_comment(artist: str, title: str, city: str = "Москва") -> str:
+def get_dj_comment(artist: str, title: str, city: str = "London") -> str:
     """
-    Короткий комментарий о треке: факт об артисте или о песне.
-    2-3 фразы, живым языком.
+    Short comment about the track: a fact about the artist or song.
+    2-3 phrases, conversational.
     """
     client = _get_client()
     if not client:
-        return f"Только что прозвучал трек {artist} — «{title}». Отличная композиция! А теперь следующий трек."
+        return f"That was {artist} with «{title}». Great track! Up next, another one."
 
     try:
         resp = client.chat.completions.create(
@@ -33,41 +33,41 @@ def get_dj_comment(artist: str, title: str, city: str = "Москва") -> str:
                 {
                     "role": "system",
                     "content": (
-                        "Ты диджей на радио. Отвечай ТОЛЬКО 2-3 короткими фразами на русском. "
-                        "Напиши интересный факт об исполнителе или о песне. Без приветствий, сразу по делу."
+                        "You are a radio DJ. Reply in 2-3 short phrases in English only. "
+                        "Write an interesting fact about the artist or the song. No greetings, straight to the point."
                     ),
                 },
                 {
                     "role": "user",
-                    "content": f"Исполнитель: {artist}. Песня: {title}. Город слушателей: {city}.",
+                    "content": f"Artist: {artist}. Song: {title}. Listeners' city: {city}.",
                 },
             ],
             max_tokens=150,
             temperature=0.7,
         )
         text = (resp.choices[0].message.content or "").strip()
-        return text if text else f"Только что — {artist}, «{title}». Следующий трек!"
+        return text if text else f"That was {artist}, «{title}». Next track coming up!"
     except Exception:
-        return f"Только что прозвучал {artist} — «{title}». Отличный трек! Дальше — следующая композиция."
+        return f"That was {artist} — «{title}». Great tune! Next up."
 
 
 def get_transition(next_artist: str, next_title: str, segment_type: str = "track") -> str:
     """
-    Переходная фраза к следующему сегменту.
+    Transition phrase to the next segment.
     segment_type: "track" | "news" | "weather"
     """
     if segment_type == "news":
-        return "А теперь выпуск новостей!"
+        return "And now, the news briefing!"
     if segment_type == "weather":
-        return "Передаём прогноз погоды!"
-    return f"А сейчас — {next_artist}, «{next_title}»."
+        return "Here's the weather forecast!"
+    return f"Up next — {next_artist}, «{next_title}»."
 
 
 def format_news_dj(intro: str) -> str:
-    """Краткое вступление перед новостями."""
-    return intro if intro else "Добрый день! Краткий выпуск новостей."
+    """Brief intro before news."""
+    return intro if intro else "News briefing."
 
 
 def format_weather_dj(intro: str) -> str:
-    """Краткое вступление перед погодой."""
-    return intro if intro else "Прогноз погоды на сегодня."
+    """Brief intro before weather."""
+    return intro if intro else "Weather forecast for today."

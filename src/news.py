@@ -1,20 +1,19 @@
-"""Загрузка новостей из RSS (бесплатно, без API-ключа)."""
+"""Fetch news from RSS (free, no API key)."""
 import feedparser
 from datetime import datetime
 
-# RSS-ленты российских СМИ
 RSS_FEEDS = [
-    "https://ria.ru/export/rss2/archive/index.xml",  # РИА Новости
-    "https://lenta.ru/rss/news",
-    "https://www.vedomosti.ru/rss/news",
-    "https://tass.ru/rss/v2.xml",
+    "https://feeds.bbci.co.uk/news/rss.xml",
+    "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+    "https://feeds.npr.org/1001/rss.xml",
+    "https://www.theguardian.com/world/rss",
 ]
 
 
 def fetch_news(limit: int = 5) -> str:
     """
-    Собирает последние новости из RSS.
-    Возвращает текст для озвучки (краткий выпуск).
+    Collect latest news from RSS.
+    Returns text for TTS (brief bulletin).
     """
     items = []
     seen_titles = set()
@@ -36,9 +35,8 @@ def fetch_news(limit: int = 5) -> str:
             break
 
     if not items:
-        return "К сожалению, новости временно недоступны. Возвращаемся к музыке."
+        return "News is temporarily unavailable. Back to the music."
 
-    intro = f"Краткий выпуск новостей. {datetime.now().strftime('%d %B')}."
-    # Простое склонение месяца можно добавить при необходимости
+    intro = f"News bulletin. {datetime.now().strftime('%d %B')}."
     lines = [intro] + [f"{i + 1}. {t}" for i, t in enumerate(items[:limit])]
     return " ".join(lines)

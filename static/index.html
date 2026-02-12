@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -65,10 +65,10 @@
 <body>
   <div class="container">
     <h1>AI Radio</h1>
-    <p class="subtitle">Музыка · Диджей · Новости · Погода</p>
+    <p class="subtitle">Music · DJ · News · Weather</p>
     <div class="player-wrap">
-      <button id="playBtn" class="btn">▶ Слушать эфир</button>
-      <p id="status" class="status">Нажмите кнопку для начала</p>
+      <button id="playBtn" class="btn">▶ Listen live</button>
+      <p id="status" class="status">Click to start</p>
     </div>
   </div>
   <script>
@@ -89,9 +89,9 @@
 
     async function startPlayback() {
       playing = true;
-      playBtn.textContent = '🔊 В эфире';
+      playBtn.textContent = '🔊 On air';
       playBtn.disabled = true;
-      setStatus('В эфире', 'playing');
+      setStatus('On air', 'playing');
       await preloadNext();
       playPreloaded();
     }

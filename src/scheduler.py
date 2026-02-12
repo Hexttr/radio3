@@ -28,6 +28,7 @@ class Scheduler:
         self.segment_queue: Queue[Path] = Queue()
         self._tracks: list[Path] = []
         self._track_index = 0
+        self._track_lock = threading.Lock()
         self._running = False
         self._thread: threading.Thread | None = None
         self._start_time = time.monotonic()
@@ -35,9 +36,10 @@ class Scheduler:
         self._last_weather_at: float = -999
 
         region = config.get("region", {})
-        self.city = region.get("city", "Москва")
-        self.lat = region.get("latitude", 55.7558)
-        self.lon = region.get("longitude", 37.6173)
+        self.city = region.get("city", "London")
+        self.lat = region.get("latitude", 51.5074)
+        self.lon = region.get("longitude", -0.1278)
+        self.timezone = region.get("timezone", "Europe/London")
         intervals = config.get("intervals", {})
         self.news_minutes = intervals.get("news_minutes", 180)
         self.weather_minutes = intervals.get("weather_minutes", 240)
@@ -50,19 +52,29 @@ class Scheduler:
         tracks = []
         for ext in ("*.mp3", "*.MP3"):
             tracks.extend(self.music_dir.glob(ext))
-        return sorted(tracks)
+        seen = set()
+        unique = []
+        for p in sorted(tracks):
+            key = str(p.resolve())
+            if key not in seen:
+                seen.add(key)
+                unique.append(p.resolve())
+        return unique
 
     def _get_next_track(self) -> Path | None:
-        if not self._tracks:
-            self._tracks = self._load_tracks()
+        with self._track_lock:
             if not self._tracks:
-                return None
-            random.shuffle(self._tracks)
-            self._track_index = 0
+                self._tracks = self._load_tracks()
+                if not self._tracks:
+                    return None
+                random.shuffle(self._tracks)
+                self._track_index = 0
 
-        track = self._tracks[self._track_index]
-        self._track_index = (self._track_index + 1) % len(self._tracks)
-        return track
+            track = self._tracks[self._track_index]
+            self._track_index = (self._track_index + 1) % len(self._tracks)
+            if self._track_index == 0:
+                random.shuffle(self._tracks)
+            return track
 
     def _minutes_elapsed(self) -> float:
         return (time.monotonic() - self._start_time) / 60
@@ -121,7 +133,7 @@ class Scheduler:
             trans_path = self._add_tts(trans, "dj")
             if trans_path:
                 self.segment_queue.put(trans_path)
-            text = fetch_weather(self.lat, self.lon, self.city)
+            text = fetch_weather(self.lat, self.lon, self.city, self.timezone)
             path = self._add_tts(text, "weather")
             if path:
                 self.segment_queue.put(path)
@@ -168,9 +180,9 @@ class Scheduler:
                 self.segment_queue.put(first)
                 self._last_artist, self._last_title = parse_track(first)
         else:
-            self._last_artist, self._last_title = "Радио", "Нет треков в папке music"
+            self._last_artist, self._last_title = "Radio", "No tracks in music folder"
             fallback = self._add_tts(
-                "Добро пожаловать на AI Радио. Добавьте mp3-файлы в папку music и перезапустите.",
+                "Welcome to AI Radio. Add mp3 files to the music folder and restart.",
                 "system",
             )
             if fallback:
