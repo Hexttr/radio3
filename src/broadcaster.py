@@ -50,10 +50,11 @@ def _get_silence_fallback(cache_dir: Path, chunk_size: int = 8192):
 
 
 def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None = None):
-    """Бесконечный генератор: читает сегменты и отдаёт байты. При паузе — тишина."""
+    """Бесконечный генератор: читает сегменты и отдаёт байты. При паузе — тишина.
+    Неблокирующий get_segment_nowait — чтобы stream никогда не останавливался между сегментами."""
     cache_dir = cache_dir or Path("cache")
     while True:
-        seg = scheduler.get_segment(timeout=5)
+        seg = scheduler.get_segment_nowait()
         if seg is None:
             _log("Queue empty, sending silence")
             for chunk in _get_silence_fallback(cache_dir, chunk_size):

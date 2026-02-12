@@ -253,3 +253,10 @@ class Scheduler:
             return self.segment_queue.get(timeout=timeout)
         except Empty:
             return None
+
+    def get_segment_nowait(self) -> Path | None:
+        """Неблокирующий запрос сегмента — для stream, чтобы не останавливать выдачу байтов."""
+        try:
+            return self.segment_queue.get_nowait()
+        except Empty:
+            return None

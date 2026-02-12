@@ -33,7 +33,8 @@ def main():
         "getent group icecast2 >/dev/null || groupadd --system icecast2",
         "getent passwd icecast2 >/dev/null || useradd --system -g icecast2 -d /var/log/icecast2 -s /usr/sbin/nologin icecast2",
         "mkdir -p /var/log/icecast2 && chown icecast2:icecast2 /var/log/icecast2",
-        "sed -i 's/<source-timeout>[0-9]*<\\/source-timeout>/<source-timeout>120<\\/source-timeout>/' /etc/icecast2/icecast.xml 2>/dev/null || true",
+        "sed -i 's/<source-timeout>.*<\\/source-timeout>/<source-timeout>120<\\/source-timeout>/' /etc/icecast2/icecast.xml 2>/dev/null || true",
+        "sed -i 's/<queue-size>.*<\\/queue-size>/<queue-size>1048576<\\/queue-size>/' /etc/icecast2/icecast.xml 2>/dev/null || true",
         f"cd {APP_DIR} && git fetch origin Ubuntu && git reset --hard origin/Ubuntu && git status",
         f"cd {APP_DIR} && head -70 src/news.py | tail -5",
         "systemctl restart icecast2 ai-radio ai-radio-broadcaster",
@@ -47,11 +48,11 @@ def main():
         err = stderr.read().decode("utf-8", errors="replace")
         code = stdout.channel.recv_exit_status()
         if out:
+            s = out if isinstance(out, str) else out.decode("utf-8", errors="replace")
             try:
-                s = out.decode("utf-8", errors="replace")
-            except AttributeError:
-                s = str(out)
-            print(s[:500])
+                print(s[:500])
+            except UnicodeEncodeError:
+                print(s[:500].encode("ascii", errors="replace").decode("ascii"))
         if err:
             print(err, file=sys.stderr)
         if code != 0:
