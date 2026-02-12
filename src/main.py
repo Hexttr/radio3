@@ -42,7 +42,12 @@ def create_app() -> Flask:
     def index():
         return send_from_directory(app.static_folder, "index.html")
 
+    @app.route("/favicon.ico")
+    def favicon():
+        return "", 204
+
     @app.route("/api/next")
+    @app.route("/next")
     def next_segment():
         """Один сегмент — полный mp3-файл."""
         segment = scheduler.get_segment()

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
   <title>AI Radio</title>
   <style>
     * { box-sizing: border-box; }
@@ -99,8 +100,12 @@
       while (playing) {
         try {
           const res = await fetch('/api/next');
-          if (res.status === 204) {
+          if (res.status === 204 || res.status === 404) {
             await new Promise(r => setTimeout(r, 500));
+            continue;
+          }
+          if (!res.ok) {
+            await new Promise(r => setTimeout(r, 1000));
             continue;
           }
           const blob = await res.blob();
