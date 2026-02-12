@@ -41,8 +41,10 @@ def main():
         print(f"Uploading {f.name}...")
         sftp.put(str(f), f.name)
     sftp.close()
+    stdin, stdout, stderr = client.exec_command("systemctl restart ai-radio")
+    stdout.channel.recv_exit_status()
     client.close()
-    print(f"[OK] Uploaded {len(files)} files")
+    print(f"[OK] Uploaded {len(files)} files, restarted service")
 
 
 if __name__ == "__main__":
