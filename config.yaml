@@ -18,11 +18,17 @@ intervals:
   news_minutes: 180
   weather_minutes: 240
 
-# TTS — Edge (free)
+# TTS — provider: "edge" (free) | "elevenlabs"
 tts:
+  provider: "edge"
+  # Edge settings
   voice: "en-GB-SoniaNeural"
   rate: "+0%"
   volume: "+0%"
+  # ElevenLabs (when provider: elevenlabs)
+  voice_id: "21m00Tcm4TlvDq8ikWAM"
+  model_id: "eleven_multilingual_v2"
+  api_key_env: "ELEVENLABS_API_KEY"
 
 # AI Диджей — Groq (бесплатный тариф)
 # Получить ключ: https://console.groq.com

@@ -14,13 +14,16 @@
 pip install -r requirements.txt
 ```
 
-## API-ключи (опционально)
+## API-ключи
 
-- **Groq** (для ИИ-комментариев): [console.groq.com](https://console.groq.com) → создать ключ
-  ```bash
-  set GROQ_API_KEY=твой_ключ
-  ```
-- Без ключа используются шаблонные фразы.
+- **Groq** (ИИ-комментарии): [console.groq.com](https://console.groq.com)
+- **ElevenLabs** (TTS, опционально): [elevenlabs.io](https://elevenlabs.io) → Profile → API Key
+
+В `.env`:
+```
+GROQ_API_KEY=...
+ELEVENLABS_API_KEY=...   # если tts.provider: elevenlabs
+```
 
 ## Запуск
 
@@ -43,12 +46,15 @@ radio3/
 ## Конфигурация (config.yaml)
 
 - `region.city` — город для погоды и новостей
-- `intervals.news_minutes` — интервал новостей (по умолчанию 180 мин)
-- `intervals.weather_minutes` — интервал погоды (по умолчанию 240 мин)
+- `intervals.news_minutes` — интервал новостей (180 мин)
+- `intervals.weather_minutes` — интервал погоды (240 мин)
+- `tts.provider` — `edge` (бесплатно) или `elevenlabs`
 
-## Источники (бесплатно)
+## TTS: Edge vs ElevenLabs
 
-- **TTS**: Edge (Microsoft)
-- **ИИ**: Groq (если указан API-ключ)
-- **Новости**: RSS (РИА, Lenta, Vedomosti, ТАСС)
-- **Погода**: Open-Meteo
+| Provider   | Ключ   | Качество      |
+|------------|--------|---------------|
+| **edge**   | Не нужен | Хорошее       |
+| **elevenlabs** | ELEVENLABS_API_KEY | Очень высокое |
+
+ElevenLabs: [elevenlabs.io](https://elevenlabs.io) → Profile → API Key → Create. Бесплатный тариф: 10 000 символов/мес.

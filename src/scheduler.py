@@ -44,9 +44,7 @@ class Scheduler:
         self.news_minutes = intervals.get("news_minutes", 180)
         self.weather_minutes = intervals.get("weather_minutes", 240)
         tts_cfg = config.get("tts", {})
-        self.voice = tts_cfg.get("voice", "ru-RU-SvetlanaNeural")
-        self.rate = tts_cfg.get("rate", "+0%")
-        self.volume = tts_cfg.get("volume", "+0%")
+        self.tts_config = dict(tts_cfg)
 
     def _load_tracks(self) -> list[Path]:
         tracks = []
@@ -107,7 +105,7 @@ class Scheduler:
     def _add_tts(self, text: str, subdir: str = "dj") -> Path | None:
         cache_sub = self.cache_dir / subdir
         try:
-            return generate_tts(text, cache_sub, self.voice, self.rate, self.volume)
+            return generate_tts(text, cache_sub, self.tts_config)
         except Exception:
             return None
 
