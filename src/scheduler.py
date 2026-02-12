@@ -154,7 +154,9 @@ class Scheduler:
         cache_sub = self.cache_dir / subdir
         try:
             return generate_tts(text, cache_sub, self.tts_config, cache_salt)
-        except Exception:
+        except Exception as e:
+            import sys
+            print(f"TTS failed ({subdir}): {e}", file=sys.stderr)
             return None
 
     def _generate_next_segments(self) -> None:

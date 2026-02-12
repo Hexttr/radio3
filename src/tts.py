@@ -46,6 +46,7 @@ def generate_tts(text: str, cache_dir: Path, config: dict, cache_salt: str = "")
     """
     Generate TTS mp3. Caches by text hash (+ salt для новостей/погоды — свежесть).
     Config: provider, voice, rate, volume (Edge) | voice_id, model_id, api_key_env (ElevenLabs)
+    ElevenLabs: retry при временных сбоях (rate limit, сеть).
     """
     text = (text or "").strip()
     if not text:
@@ -70,13 +71,24 @@ def generate_tts(text: str, cache_dir: Path, config: dict, cache_salt: str = "")
             raise ValueError("ELEVENLABS_API_KEY not set. Add to .env when using elevenlabs provider.")
         if len(text) > 9000:
             raise ValueError(f"TTS text too long ({len(text)} chars), max 9000 for ElevenLabs")
-        _generate_elevenlabs(
-            text,
-            voice_id=config.get("voice_id", "21m00Tcm4TlvDq8ikWAM"),
-            model_id=config.get("model_id", "eleven_multilingual_v2"),
-            api_key=api_key,
-            output_path=output_path,
-        )
+        last_err = None
+        for attempt in range(3):
+            try:
+                _generate_elevenlabs(
+                    text,
+                    voice_id=config.get("voice_id", "21m00Tcm4TlvDq8ikWAM"),
+                    model_id=config.get("model_id", "eleven_multilingual_v2"),
+                    api_key=api_key,
+                    output_path=output_path,
+                )
+                break
+            except Exception as e:
+                last_err = e
+                if attempt < 2:
+                    import time
+                    time.sleep(1.0 * (attempt + 1))
+        else:
+            raise last_err
     else:
         _generate_edge(
             text,
