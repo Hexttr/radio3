@@ -75,6 +75,9 @@ def main():
         # 4. Icecast2 (пароль source = hackme, как в config.yaml)
         run_commands(client, [
             "apt-get install -y -qq icecast2",
+            "getent group icecast2 >/dev/null || groupadd --system icecast2",
+            "getent passwd icecast2 >/dev/null || useradd --system -g icecast2 -d /var/log/icecast2 -s /usr/sbin/nologin icecast2",
+            "mkdir -p /var/log/icecast2 && chown icecast2:icecast2 /var/log/icecast2",
             "sed -i 's/<source-password>.*<\\/source-password>/<source-password>hackme<\\/source-password>/' /etc/icecast2/icecast.xml 2>/dev/null || true",
             "systemctl enable icecast2",
             "systemctl start icecast2",
