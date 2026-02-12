@@ -1,13 +1,13 @@
 """
 Broadcaster — читает сегменты из Scheduler и стримит в Icecast.
-Единый эфир для всех слушателей.
+Icecast не поддерживает chunked encoding, поэтому используем HTTP/1.0.
 """
 import base64
+import socket
 import sys
 import time
 from pathlib import Path
-
-import requests
+from urllib.parse import urlparse
 
 
 def stream_generator(scheduler, chunk_size: int = 8192):
@@ -33,27 +33,61 @@ def stream_generator(scheduler, chunk_size: int = 8192):
 
 def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/live", name: str = "NAVO RADIO"):
     """
-    Стримит аудио в Icecast. Блокирующий вызов.
-    icecast_url: http://127.0.0.1:8000
-    password: source password из icecast.xml
+    Стримит аудио в Icecast. HTTP/1.0 без chunked (Icecast его не поддерживает).
     """
-    url = f"{icecast_url.rstrip('/')}{mount}"
+    parsed = urlparse(icecast_url.rstrip("/"))
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or 8000
     auth = base64.b64encode(f"source:{password}".encode()).decode("ascii")
-    headers = {
-        "Authorization": f"Basic {auth}",
-        "Content-Type": "audio/mpeg",
-        "Ice-Public": "1",
-        "Ice-Name": name,
-        "Ice-Description": "NAVO RADIO 24/7 AI Radio",
-    }
+
     gen = stream_generator(scheduler)
+    sock = None
     while True:
         try:
-            r = requests.put(url, data=gen, headers=headers, timeout=None, stream=True)
-            if r.status_code in (200, 201):
-                print("Connected to Icecast", file=sys.stderr)
-            else:
-                print(f"Icecast rejected: {r.status_code}", file=sys.stderr)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(30)
+            sock.connect((host, port))
+
+            path = mount or "/"
+            req = (
+                f"PUT {path} HTTP/1.0\r\n"
+                f"Host: {host}:{port}\r\n"
+                f"Authorization: Basic {auth}\r\n"
+                f"Content-Type: audio/mpeg\r\n"
+                f"Ice-Public: 1\r\n"
+                f"Ice-Name: {name}\r\n"
+                f"Ice-Description: NAVO RADIO 24/7\r\n"
+                "\r\n"
+            )
+            sock.sendall(req.encode("ascii"))
+
+            # Прочитать ответ Icecast (100/200) перед отправкой тела
+            sock.settimeout(5)
+            resp = b""
+            while b"\r\n\r\n" not in resp:
+                resp += sock.recv(4096)
+                if not resp:
+                    raise ConnectionError("Icecast closed connection")
+            first_line = resp.split(b"\r\n")[0].decode("ascii", errors="replace")
+            if "200" not in first_line and "100" not in first_line:
+                raise ConnectionError(f"Icecast rejected: {first_line}")
+
+            print("Connected to Icecast", file=sys.stderr)
+            sock.settimeout(60)
+            sent = 0
+            for chunk in gen:
+                sock.sendall(chunk)
+                sent += len(chunk)
+                if sent >= 65536:
+                    sock.settimeout(60)
+                    sent = 0
+
         except Exception as e:
             print(f"Broadcaster error: {e}", file=sys.stderr)
+        finally:
+            try:
+                if sock:
+                    sock.close()
+            except Exception:
+                pass
         time.sleep(5)
