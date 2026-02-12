@@ -79,6 +79,15 @@ def create_app() -> Flask:
     def api_ping():
         return "ok", 200
 
+    @app.route("/api/log")
+    def api_log():
+        """Последние 100 строк broadcaster.log для отладки."""
+        log_path = ROOT_DIR / "broadcaster.log"
+        if not log_path.exists():
+            return "No log yet", 404
+        lines = log_path.read_text(encoding="utf-8", errors="replace").strip().split("\n")
+        return Response("\n".join(lines[-100:]), mimetype="text/plain; charset=utf-8")
+
     @app.route("/api/status")
     def api_status():
         """Время сервера и МСК для отладки расписания."""
