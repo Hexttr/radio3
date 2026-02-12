@@ -65,7 +65,7 @@ def fetch_news(limit: int = 8, language: str = "ru") -> str:
     now = datetime.now()
     date_str_val = lang.date_str(language, now.day, now.month)
     intro = lang.get(language, "news_intro", date=date_str_val)
-    lines = [intro] + [f"{i + 1}. {t}" for i, t in enumerate(items[:limit])]
+    lines = [intro] + list(items[:limit])
     result = " ".join(lines)
     # ElevenLabs limit 10k symbols — обрезаем до 9000
     if len(result) > 9000:

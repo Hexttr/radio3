@@ -10,9 +10,9 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import yaml
 
-from flask import Flask, Response, send_from_directory
+from flask import Flask, Response, jsonify, send_from_directory
 
-from .scheduler import Scheduler
+from .scheduler import MSK, Scheduler
 from .track_parser import parse_track
 
 APP_DIR = Path(__file__).resolve().parent
@@ -73,6 +73,23 @@ def create_app() -> Flask:
     @app.route("/favicon.ico")
     def favicon():
         return "", 204
+
+    @app.route("/api/status")
+    def api_status():
+        """Время сервера и МСК для отладки расписания."""
+        from zoneinfo import ZoneInfo
+        from datetime import datetime
+        now = datetime.now()
+        msk_now = datetime.now(ZoneInfo(MSK))
+        return jsonify({
+            "server_utc": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "server_local": now.astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
+            "msk": msk_now.strftime("%Y-%m-%d %H:%M:%S MSK"),
+            "msk_hour": msk_now.hour,
+            "next_news": sorted(h for h in [9, 12, 15, 18, 21] if h > msk_now.hour or msk_now.hour >= 21)[:1] or [9],
+            "next_weather": sorted(h for h in [7, 10, 13, 16, 19] if h > msk_now.hour or msk_now.hour >= 19)[:1] or [7],
+            "next_podcast": sorted(h for h in [11, 14, 17, 20] if h > msk_now.hour or msk_now.hour >= 20)[:1] or [11],
+        })
 
     @app.route("/api/next")
     @app.route("/next")

@@ -7,6 +7,16 @@ MONTHS = {
 }
 
 
+WIND_DIRECTIONS = {
+    "ru": {"n": "северный", "ne": "северо-восточный", "e": "восточный", "se": "юго-восточный",
+           "s": "южный", "sw": "юго-западный", "w": "западный", "nw": "северо-западный"},
+    "en": {"n": "north", "ne": "northeast", "e": "east", "se": "southeast",
+           "s": "south", "sw": "southwest", "w": "west", "nw": "northwest"},
+    "tj": {"n": "шимол", "ne": "шимолу-шарқ", "e": "шарқ", "se": "ҷанубу-шарқ",
+           "s": "ҷануб", "sw": "ҷанубу-ғарб", "w": "ғарб", "nw": "шимолу-ғарб"},
+}
+
+
 def date_str(lang: str, day: int, month: int) -> str:
     m = MONTHS.get(lang, MONTHS["en"])
     return f"{day} {m[month - 1]}"
@@ -23,9 +33,14 @@ STRINGS = {
         "news_unavailable": "Новости временно недоступны. Возвращаемся к музыке.",
         "news_intro": "Краткий выпуск новостей. {date}.",
         "weather_unavailable": "Прогноз погоды для {city} временно недоступен.",
-        "weather_template": "Погода в {city}. {desc}, {temp}{hum}.",
-        "temp_format": "{n} градусов",
-        "hum_format": ", влажность {n} процентов",
+        "weather_intro": "Погода в {city}. {desc}.",
+        "temp_format": "Сейчас {n} градусов",
+        "feels_format": "ощущается как {n} градусов",
+        "daily_format": "Днём до {max}, ночью до {min} градусов",
+        "hum_format": "Влажность {n} процентов",
+        "wind_format": "Ветер {speed} километров в час, {dir}",
+        "pressure_format": "Давление {n} гектопаскалей",
+        "precip_format": "Осадки {n} миллиметров",
         "welcome": "Добро пожаловать на AI Радио. Добавьте mp3 в папку music и перезапустите.",
     },
     "en": {
@@ -38,9 +53,14 @@ STRINGS = {
         "news_unavailable": "News is temporarily unavailable. Back to the music.",
         "news_intro": "News bulletin. {date}.",
         "weather_unavailable": "Weather for {city} is temporarily unavailable.",
-        "weather_template": "Weather in {city}. {desc}, {temp}{hum}.",
-        "temp_format": "{n} degrees",
-        "hum_format": ", humidity {n} percent",
+        "weather_intro": "Weather in {city}. {desc}.",
+        "temp_format": "Currently {n} degrees",
+        "feels_format": "feels like {n} degrees",
+        "daily_format": "High {max}, low {min} degrees",
+        "hum_format": "Humidity {n} percent",
+        "wind_format": "Wind {speed} kilometers per hour, {dir}",
+        "pressure_format": "Pressure {n} hectopascals",
+        "precip_format": "Precipitation {n} millimeters",
         "welcome": "Welcome to AI Radio. Add mp3 files to the music folder and restart.",
     },
     "tj": {
@@ -53,9 +73,14 @@ STRINGS = {
         "news_unavailable": "Хабарҳо дастрас нестанд. Баргардед ба мусиқӣ.",
         "news_intro": "Хабарҳои мухтасар. {date}.",
         "weather_unavailable": "Обу ҳаво барои {city} дастрас нест.",
-        "weather_template": "Обу ҳаво дар {city}. {desc}, {temp}{hum}.",
-        "temp_format": "{n} дараҷа",
-        "hum_format": ", намнокии {n} фоиз",
+        "weather_intro": "Обу ҳаво дар {city}. {desc}.",
+        "temp_format": "Акнун {n} дараҷа",
+        "feels_format": "ҳис мешавад {n} дараҷа",
+        "daily_format": "Рӯз то {max}, шаб то {min} дараҷа",
+        "hum_format": "Намнокӣ {n} фоиз",
+        "wind_format": "Бод {speed} километр дар соат, {dir}",
+        "pressure_format": "Фишор {n} гектопаскал",
+        "precip_format": "Борон {n} миллиметр",
         "welcome": "Хуш омадед ба AI Радио. Файлҳои mp3 ба папкаи music илова кунед.",
     },
 }

@@ -54,7 +54,8 @@ python run.py
 
 ```
 radio3/
-├── music/          ← сюда mp3 (формат: Artist - Title.mp3 или с ID3-тегами)
+├── music/          ← mp3 (формат: Artist - Title.mp3 или с ID3-тегами)
+├── podcasts/       ← mp3 подкастов (играют в 11, 14, 17, 20 МСК)
 ├── cache/          ← кэш озвучек (создаётся автоматически)
 ├── config.yaml     ← настройки
 └── run.py
