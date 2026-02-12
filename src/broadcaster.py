@@ -10,15 +10,36 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
-def stream_generator(scheduler, chunk_size: int = 8192):
-    """Бесконечный генератор: читает сегменты и отдаёт байты."""
+def _get_silence_fallback(cache_dir: Path, chunk_size: int = 8192):
+    """Генерирует ~3 сек тишины MP3 для паузы между сегментами."""
+    try:
+        from pydub import AudioSegment
+    except ImportError:
+        return b""
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    path = cache_dir / "silence_3s.mp3"
+    if not path.exists() or path.stat().st_size < 100:
+        silence = AudioSegment.silent(duration=3000)
+        silence.export(path, format="mp3", bitrate="128k")
+    data = path.read_bytes()
+    for i in range(0, len(data), chunk_size):
+        yield data[i : i + chunk_size]
+
+
+def stream_generator(scheduler, chunk_size: int = 8192, cache_dir: Path | None = None):
+    """Бесконечный генератор: читает сегменты и отдаёт байты. При паузе — тишина."""
+    cache_dir = cache_dir or Path("cache")
     while True:
-        seg = scheduler.get_segment()
+        seg = scheduler.get_segment(timeout=5)
         if seg is None:
-            time.sleep(1)
+            for chunk in _get_silence_fallback(cache_dir, chunk_size):
+                yield chunk
             continue
         path = Path(seg)
         if not path.exists() or path.stat().st_size == 0:
+            for chunk in _get_silence_fallback(cache_dir, chunk_size):
+                yield chunk
             continue
         try:
             with open(path, "rb") as f:
@@ -28,7 +49,8 @@ def stream_generator(scheduler, chunk_size: int = 8192):
                         break
                     yield chunk
         except Exception:
-            continue
+            for chunk in _get_silence_fallback(cache_dir, chunk_size):
+                yield chunk
 
 
 def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/live", name: str = "NAVO RADIO"):
@@ -40,7 +62,8 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
     port = parsed.port or 8000
     auth = base64.b64encode(f"source:{password}".encode()).decode("ascii")
 
-    gen = stream_generator(scheduler)
+    cache_dir = getattr(scheduler, "cache_dir", Path("cache"))
+    gen = stream_generator(scheduler, cache_dir=cache_dir)
     sock = None
     while True:
         try:

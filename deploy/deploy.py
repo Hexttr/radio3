@@ -79,6 +79,7 @@ def main():
             "getent passwd icecast2 >/dev/null || useradd --system -g icecast2 -d /var/log/icecast2 -s /usr/sbin/nologin icecast2",
             "mkdir -p /var/log/icecast2 && chown icecast2:icecast2 /var/log/icecast2",
             "sed -i 's/<source-password>.*<\\/source-password>/<source-password>hackme<\\/source-password>/' /etc/icecast2/icecast.xml 2>/dev/null || true",
+            "sed -i 's/<source-timeout>.*<\\/source-timeout>/<source-timeout>120<\\/source-timeout>/' /etc/icecast2/icecast.xml 2>/dev/null || true",
             "systemctl enable icecast2",
             "systemctl start icecast2",
         ], "Icecast2")
