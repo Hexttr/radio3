@@ -128,16 +128,16 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
 
             _log("Connected, starting stream...")
             sock.settimeout(120)
-            sent = 0
+            # Дроссель: ~128 kbps MP3 = 16 KB/s — чтобы не переполнять Icecast
+            BYTES_PER_SEC = 16000
             for chunk in gen:
                 sock.sendall(chunk)
-                sent += len(chunk)
-                if sent >= 65536:
-                    sock.settimeout(60)
-                    sent = 0
+                time.sleep(len(chunk) / BYTES_PER_SEC)
 
         except Exception as e:
+            import traceback
             _log(f"Broadcaster error: {e}")
+            _log(traceback.format_exc())
         finally:
             try:
                 if sock:
