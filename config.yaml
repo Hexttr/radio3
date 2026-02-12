@@ -26,8 +26,8 @@ intervals:
 # TTS — provider: "edge" (free) | "elevenlabs"
 tts:
   provider: "elevenlabs"
-  # Усиление голоса (dB), чтобы TTS не уступал музыке. 12—15 — заметно громче
-  volume_boost_db: 12
+  # Усиление голоса (dB), чтобы TTS не уступал музыке
+  volume_boost_db: 7
   # Edge settings
   voice: "en-GB-SoniaNeural"
   rate: "+0%"
