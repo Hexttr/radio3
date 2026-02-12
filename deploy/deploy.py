@@ -82,12 +82,12 @@ def main():
             sftp = client.open_sftp()
             sftp.put(str(env_local), f"{APP_DIR}/.env")
             sftp.close()
-            print("  .env скопирован с локальной машины")
+            print("  .env copied from local machine")
         else:
             run_commands(client, [
                 f"touch {APP_DIR}/.env",
             ])
-            print("  Создайте .env на сервере с GROQ_API_KEY")
+            print("  Create .env on server with GROQ_API_KEY")
 
         # 5. Systemd
         svc = f"""[Unit]
@@ -127,9 +127,9 @@ WantedBy=multi-user.target
             "ufw --force enable 2>/dev/null || true",
         ])
 
-        print("\n✓ Деплой завершён.")
-        print(f"  Эфир: http://{host}:5000")
-        print(f"  Добавьте .env с GROQ_API_KEY и mp3 в {APP_DIR}/music/")
+        print("\n[OK] Deploy complete.")
+        print(f"  Stream: http://{host}:5000")
+        print(f"  Add mp3 to {APP_DIR}/music/ on server")
 
     finally:
         client.close()
