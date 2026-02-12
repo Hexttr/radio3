@@ -10,11 +10,9 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import yaml
 
-from flask import Flask, Response, jsonify, redirect, request, send_from_directory
+from flask import Flask, Response, jsonify, send_from_directory
 
 from .scheduler import MSK, Scheduler
-
-APP_VERSION = "4"  # сброс кеша при обновлении фронта
 from .track_parser import parse_track
 
 APP_DIR = Path(__file__).resolve().parent
@@ -48,11 +46,10 @@ def create_app() -> Flask:
 
     @app.route("/")
     def index():
-        if request.args.get("v") != APP_VERSION:
-            return redirect(f"/?v={APP_VERSION}", code=302)
         r = send_from_directory(app.static_folder, "index.html")
         r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         r.headers["Pragma"] = "no-cache"
+        r.headers["Expires"] = "0"
         return r
 
     @app.route("/live")
@@ -77,6 +74,10 @@ def create_app() -> Flask:
     @app.route("/favicon.ico")
     def favicon():
         return "", 204
+
+    @app.route("/api/ping")
+    def api_ping():
+        return "ok", 200
 
     @app.route("/api/status")
     def api_status():
