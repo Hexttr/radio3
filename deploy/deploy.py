@@ -98,7 +98,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory={APP_DIR}
-Environment="PATH={APP_DIR}/venv/bin"
+Environment="PATH={APP_DIR}/venv/bin:/usr/bin:/bin"
 EnvironmentFile={APP_DIR}/.env
         ExecStart={APP_DIR}/venv/bin/gunicorn -w 1 -b 127.0.0.1:5000 --timeout 300 wsgi:app
 Restart=always

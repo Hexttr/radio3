@@ -96,7 +96,8 @@ def generate_tts(text: str, cache_dir: Path, config: dict, cache_salt: str = "")
             seg = AudioSegment.from_mp3(str(output_path))
             seg = seg + boost_db
             seg.export(str(output_path), format="mp3", bitrate="128k")
-        except Exception:
-            pass
+        except Exception as e:
+            import sys
+            print(f"TTS volume_boost failed: {e}", file=sys.stderr)
 
     return output_path
