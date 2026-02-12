@@ -72,9 +72,17 @@ def main():
             f"cd {APP_DIR} && ./venv/bin/pip install -q -r requirements.txt gunicorn",
         ], "Python")
 
-        # 4. Директории и .env
+        # 4. Icecast2 (пароль source = hackme, как в config.yaml)
         run_commands(client, [
-            f"mkdir -p {APP_DIR}/music {APP_DIR}/cache",
+            "apt-get install -y -qq icecast2",
+            "sed -i 's/<source-password>.*<\\/source-password>/<source-password>hackme<\\/source-password>/' /etc/icecast2/icecast.xml 2>/dev/null || true",
+            "systemctl enable icecast2",
+            "systemctl start icecast2",
+        ], "Icecast2")
+
+        # 5. Директории и .env
+        run_commands(client, [
+            f"mkdir -p {APP_DIR}/music {APP_DIR}/cache {APP_DIR}/podcasts",
         ])
 
         env_local = ROOT / ".env"
@@ -89,7 +97,7 @@ def main():
             ])
             print("  Create .env on server with GROQ_API_KEY")
 
-        # 5. Systemd
+        # 6. Systemd — Flask + Broadcaster
         svc = f"""[Unit]
 Description=AI Radio
 After=network.target
@@ -100,7 +108,25 @@ User=root
 WorkingDirectory={APP_DIR}
 Environment="PATH={APP_DIR}/venv/bin:/usr/bin:/bin"
 EnvironmentFile={APP_DIR}/.env
-        ExecStart={APP_DIR}/venv/bin/gunicorn -w 1 -b 127.0.0.1:5000 --timeout 300 wsgi:app
+ExecStart={APP_DIR}/venv/bin/gunicorn -w 1 -b 127.0.0.1:5000 --timeout 300 wsgi:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+        broadcaster_svc = f"""[Unit]
+Description=AI Radio Broadcaster (Icecast source)
+After=network.target icecast2.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory={APP_DIR}
+Environment="PATH={APP_DIR}/venv/bin:/usr/bin:/bin"
+EnvironmentFile={APP_DIR}/.env
+ExecStart={APP_DIR}/venv/bin/python run_broadcaster.py
 Restart=always
 RestartSec=5
 
@@ -111,16 +137,19 @@ WantedBy=multi-user.target
         sftp = client.open_sftp()
         with sftp.open(f"{APP_DIR}/ai-radio.service", "w") as f:
             f.write(svc)
+        with sftp.open(f"{APP_DIR}/ai-radio-broadcaster.service", "w") as f:
+            f.write(broadcaster_svc)
         sftp.close()
 
         run_commands(client, [
             f"cp {APP_DIR}/ai-radio.service /etc/systemd/system/",
+            f"cp {APP_DIR}/ai-radio-broadcaster.service /etc/systemd/system/",
             "systemctl daemon-reload",
-            f"systemctl enable ai-radio",
-            f"systemctl restart ai-radio",
+            f"systemctl enable ai-radio ai-radio-broadcaster",
+            f"systemctl restart ai-radio ai-radio-broadcaster",
         ], "Systemd")
 
-        # 6. Nginx + HTTPS (домен navoradio.com)
+        # 7. Nginx + HTTPS (домен navoradio.com)
         domain = os.environ.get("DEPLOY_DOMAIN", "navoradio.com")
         email = os.environ.get("DEPLOY_EMAIL", "admin@navoradio.com")
 
@@ -128,10 +157,18 @@ WantedBy=multi-user.target
             "apt-get install -y -qq nginx certbot python3-certbot-nginx",
         ], "Nginx + Certbot")
 
-        nginx_conf = f"""# NAVO RADIO — только {domain}, без редиректов
+        nginx_conf = f"""# NAVO RADIO — {domain} + Icecast stream
 server {{
     listen 80;
     server_name {domain} www.{domain};
+    location /live {{
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_buffering off;
+        proxy_read_timeout 86400s;
+    }}
     location / {{
         proxy_pass http://127.0.0.1:5000;
         proxy_http_version 1.1;

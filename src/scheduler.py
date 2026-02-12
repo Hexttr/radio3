@@ -1,6 +1,6 @@
 """
-Планировщик сегментов: музыка, комментарии диджея, новости, погода.
-Генерирует сегменты заранее, чтобы не было пауз.
+Планировщик сегментов: музыка, диджей, новости, погода, подкасты.
+Расписание по часам МСК. Между слотыми — треки + реплики диджея.
 """
 import random
 import threading
@@ -16,6 +16,26 @@ from .news import fetch_news
 from .weather import fetch_weather
 from . import lang
 
+MSK = "Europe/Moscow"
+
+
+def _msk_hour() -> int:
+    """Текущий час по Москве."""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(MSK)).hour
+    except ImportError:
+        return datetime.utcnow().hour + 3  # грубо МСК
+
+
+def _msk_date_str() -> str:
+    """Дата по МСК для cache salt."""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(MSK)).strftime("%Y-%m-%d-%H")
+    except ImportError:
+        return datetime.now().strftime("%Y-%m-%d-%H")
+
 
 class Scheduler:
     def __init__(
@@ -23,9 +43,11 @@ class Scheduler:
         music_dir: Path,
         cache_dir: Path,
         config: dict,
+        podcasts_dir: Path | None = None,
     ):
         self.music_dir = Path(music_dir)
         self.cache_dir = Path(cache_dir)
+        self.podcasts_dir = Path(podcasts_dir) if podcasts_dir else Path(config.get("podcasts_dir", "podcasts"))
         self.config = config
         self.segment_queue: Queue[Path] = Queue()
         self._tracks: list[Path] = []
@@ -33,24 +55,27 @@ class Scheduler:
         self._track_lock = threading.Lock()
         self._running = False
         self._thread: threading.Thread | None = None
-        self._start_time = time.monotonic()
-        self._last_news_at: float = -999
-        self._last_weather_at: float = -999
+        self._last_news_hour: int = -1
+        self._last_weather_hour: int = -1
+        self._last_podcast_hour: int = -1
+        self._podcast_index: int = 0
 
         region = config.get("region", {})
         self.city = region.get("city", "Dushanbe")
         self.lat = region.get("latitude", 38.56)
         self.lon = region.get("longitude", 68.78)
         self.timezone = region.get("timezone", "Asia/Dushanbe")
-        intervals = config.get("intervals", {})
-        self.news_minutes = intervals.get("news_minutes", 180)
-        self.weather_minutes = intervals.get("weather_minutes", 240)
-        self.news_items = intervals.get("news_items", 8)
+        sched = config.get("schedule", {})
+        self.news_hours = set(sched.get("news_hours", [9, 12, 15, 18, 21]))
+        self.weather_hours = set(sched.get("weather_hours", [7, 10, 13, 16, 19]))
+        self.podcast_hours = set(sched.get("podcast_hours", [11, 14, 17, 20]))
+        self.news_items = sched.get("news_items", 8)
         tts_cfg = config.get("tts", {})
         self.tts_config = dict(tts_cfg)
         self.language = config.get("language", "ru")
 
     def _load_tracks(self) -> list[Path]:
+        """Горячая замена: каждый раз читаем с диска."""
         tracks = []
         for ext in ("*.mp3", "*.MP3"):
             tracks.extend(self.music_dir.glob(ext))
@@ -75,36 +100,55 @@ class Scheduler:
             track = self._tracks[self._track_index]
             self._track_index = (self._track_index + 1) % len(self._tracks)
             if self._track_index == 0:
-                random.shuffle(self._tracks)
+                self._tracks = self._load_tracks()
+                if self._tracks:
+                    random.shuffle(self._tracks)
+                    self._track_index = 0
             return track
 
-    def _minutes_elapsed(self) -> float:
-        return (time.monotonic() - self._start_time) / 60
+    def _load_podcasts(self) -> list[Path]:
+        """Подкасты из папки — каждый раз свежий список."""
+        items = []
+        if not self.podcasts_dir.exists():
+            return items
+        for ext in ("*.mp3", "*.MP3"):
+            items.extend(self.podcasts_dir.glob(ext))
+        return sorted(p.resolve() for p in items)
+
+    def _get_next_podcast(self) -> Path | None:
+        pods = self._load_podcasts()
+        if not pods:
+            return None
+        idx = self._podcast_index % len(pods)
+        self._podcast_index += 1
+        return pods[idx]
 
     def _should_play_news(self) -> bool:
-        m = self._minutes_elapsed()
-        if m < 1:
+        h = _msk_hour()
+        if h not in self.news_hours:
             return False
-        slot = int(m // self.news_minutes) * self.news_minutes
-        if slot <= self._last_news_at:
+        if h == self._last_news_hour:
             return False
-        # Окно 15 мин в начале каждого слота — успеем попасть при любом темпе очереди
-        if m - slot < 15:
-            self._last_news_at = slot
-            return True
-        return False
+        self._last_news_hour = h
+        return True
 
     def _should_play_weather(self) -> bool:
-        m = self._minutes_elapsed()
-        if m < 1:
+        h = _msk_hour()
+        if h not in self.weather_hours:
             return False
-        slot = int(m // self.weather_minutes) * self.weather_minutes
-        if slot <= self._last_weather_at:
+        if h == self._last_weather_hour:
             return False
-        if m - slot < 15:
-            self._last_weather_at = slot
-            return True
-        return False
+        self._last_weather_hour = h
+        return True
+
+    def _should_play_podcast(self) -> bool:
+        h = _msk_hour()
+        if h not in self.podcast_hours:
+            return False
+        if h == self._last_podcast_hour:
+            return False
+        self._last_podcast_hour = h
+        return True
 
     def _add_tts(self, text: str, subdir: str = "dj", cache_salt: str = "") -> Path | None:
         cache_sub = self.cache_dir / subdir
@@ -114,10 +158,10 @@ class Scheduler:
             return None
 
     def _generate_next_segments(self) -> None:
-        """Добавляет в очередь: [dj_comment, transition, next_segment]."""
-        # Определяем, что идёт дальше
+        """Добавляет в очередь: transition + segment (news/weather/podcast/track)."""
         play_news = self._should_play_news()
         play_weather = self._should_play_weather()
+        play_podcast = self._should_play_podcast()
 
         if play_news:
             trans = get_transition("", "", "news", self.language)
@@ -125,8 +169,7 @@ class Scheduler:
             if trans_path:
                 self.segment_queue.put(trans_path)
             text = fetch_news(limit=self.news_items, language=self.language)
-            salt = datetime.now().strftime("%Y-%m-%d-%H")
-            path = self._add_tts(text, "news", salt)
+            path = self._add_tts(text, "news", _msk_date_str())
             if path:
                 self.segment_queue.put(path)
             return
@@ -140,6 +183,16 @@ class Scheduler:
             path = self._add_tts(text, "weather")
             if path:
                 self.segment_queue.put(path)
+            return
+
+        if play_podcast:
+            trans = get_transition("", "", "podcast", self.language)
+            trans_path = self._add_tts(trans, "dj")
+            if trans_path:
+                self.segment_queue.put(trans_path)
+            pod = self._get_next_podcast()
+            if pod:
+                self.segment_queue.put(pod)
             return
 
         # Обычный трек: [комментарий о прошлом] → [переход] → [трек]
@@ -163,10 +216,8 @@ class Scheduler:
         self.segment_queue.put(next_track)
 
     def _run_generator(self) -> None:
-        """Фоновая нить: держит очередь заполненной."""
         while self._running:
             try:
-                # Держим 3+ сегмента впереди
                 while self._running and self.segment_queue.qsize() < 3:
                     self._generate_next_segments()
             except Exception:
@@ -176,6 +227,7 @@ class Scheduler:
     def start(self) -> None:
         self._running = True
         self._tracks = self._load_tracks()
+        self.podcasts_dir.mkdir(exist_ok=True)
         if self._tracks:
             random.shuffle(self._tracks)
             first = self._get_next_track()
@@ -184,10 +236,7 @@ class Scheduler:
                 self._last_artist, self._last_title = parse_track(first)
         else:
             self._last_artist, self._last_title = "Radio", "No tracks in music folder"
-            fallback = self._add_tts(
-                lang.get(self.language, "welcome"),
-                "system",
-            )
+            fallback = self._add_tts(lang.get(self.language, "welcome"), "system")
             if fallback:
                 self.segment_queue.put(fallback)
 

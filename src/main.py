@@ -48,6 +48,25 @@ def create_app() -> Flask:
     def index():
         return send_from_directory(app.static_folder, "index.html")
 
+    @app.route("/live")
+    def live_proxy():
+        """Прокси к Icecast (для локальной разработки без nginx)."""
+        ice = config.get("icecast", {})
+        url = f"{ice.get('url', 'http://127.0.0.1:8000').rstrip('/')}{ice.get('mount', '/live')}"
+        try:
+            import requests as req
+            r = req.get(url, stream=True, timeout=5)
+            r.raise_for_status()
+
+            def gen():
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        yield chunk
+
+            return Response(gen(), mimetype="audio/mpeg", direct_passthrough=True)
+        except Exception:
+            return "", 502
+
     @app.route("/favicon.ico")
     def favicon():
         return "", 204

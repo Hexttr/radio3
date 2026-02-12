@@ -116,16 +116,15 @@
     const equalizer = document.getElementById('equalizer');
 
     const BAR_COUNT = 32;
+    const STREAM_URL = '/live';
     let playing = false;
     let muted = false;
     let currentAudio = null;
-    let preloaded = null;
     let audioContext = null;
     let analyser = null;
     let currentSource = null;
     let animationId = null;
 
-    // Создаём полоски эквалайзера
     for (let i = 0; i < BAR_COUNT; i++) {
       const bar = document.createElement('div');
       bar.className = 'eq-bar';
@@ -134,20 +133,8 @@
     }
     const bars = equalizer.querySelectorAll('.eq-bar');
 
-    function setNowPlaying(segmentType, artist, title) {
-      const label = nowPlaying.querySelector('.label');
-      if (segmentType === 'track' && artist && title) {
-        label.textContent = 'Сейчас играет';
-        nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — ' + (artist + ' — ' + title);
-      } else if (segmentType === 'news') {
-        nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — Новости';
-      } else if (segmentType === 'weather') {
-        nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — Погода';
-      } else if (segmentType === 'dj') {
-        nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — Диджей';
-      } else {
-        nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — ' + (artist && title ? artist + ' — ' + title : '…');
-      }
+    function setNowPlayingLive() {
+      nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — NAVO RADIO · Прямой эфир';
     }
 
     function updateEqualizer(freqData) {
@@ -190,11 +177,7 @@
       tick();
     }
 
-    function revokeUrl(url) {
-      if (url) try { URL.revokeObjectURL(url); } catch (_) {}
-    }
-
-    async function startPlayback() {
+    function startPlayback() {
       if (playing && !muted) return;
       if (muted && currentAudio) {
         muted = false;
@@ -209,8 +192,31 @@
       playBtn.textContent = '■';
       playBtn.title = 'Остановить';
       stopIdleEqualizer();
-      await preloadNext();
-      playPreloaded();
+      setNowPlayingLive();
+
+      const audio = new Audio(STREAM_URL);
+      currentAudio = audio;
+
+      audio.onerror = () => {
+        nowPlaying.innerHTML = '<span class="label">Ошибка</span> — не удалось подключиться к эфиру';
+      };
+
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.6;
+        analyser.connect(audioContext.destination);
+      }
+      if (currentSource) currentSource.disconnect();
+      currentSource = audioContext.createMediaElementSource(audio);
+      currentSource.connect(analyser);
+
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      audio.play();
+      runEqualizerLoop();
     }
 
     function stopPlayback() {
@@ -234,76 +240,6 @@
         startPlayback();
       }
     };
-
-    async function preloadNext() {
-      while (playing) {
-        try {
-          const res = await fetch('/api/next');
-          if (res.status === 204 || res.status === 404) {
-            await new Promise(r => setTimeout(r, 500));
-            continue;
-          }
-          if (!res.ok) {
-            await new Promise(r => setTimeout(r, 1000));
-            continue;
-          }
-          const type = res.headers.get('X-Segment-Type') || 'track';
-          const artist = res.headers.get('X-Artist') || '';
-          const title = res.headers.get('X-Title') || '';
-          const blob = await res.blob();
-          preloaded = { url: URL.createObjectURL(blob), type, artist, title };
-          return;
-        } catch (e) {
-          await new Promise(r => setTimeout(r, 500));
-        }
-      }
-    }
-
-    function connectAudioToAnalyser(audio) {
-      if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.6;
-        analyser.connect(audioContext.destination);
-      }
-      if (currentSource) currentSource.disconnect();
-      currentSource = audioContext.createMediaElementSource(audio);
-      currentSource.connect(analyser);
-    }
-
-    function playPreloaded() {
-      if (!playing) return;
-      if (!preloaded) {
-        setTimeout(playPreloaded, 100);
-        return;
-      }
-      const { url, type, artist, title } = preloaded;
-      preloaded = null;
-      preloadNext();
-
-      const audio = new Audio(url);
-      currentAudio = audio;
-
-      audio.onended = () => {
-        revokeUrl(url);
-        if (playing && !muted) playPreloaded();
-      };
-      audio.onerror = () => {
-        revokeUrl(url);
-        if (playing && !muted) playPreloaded();
-      };
-
-      if (playing && !muted) {
-        connectAudioToAnalyser(audio);
-        if (audioContext.state === 'suspended') {
-          audioContext.resume();
-        }
-        setNowPlaying(type, artist, title);
-        audio.play();
-        runEqualizerLoop();
-      }
-    }
 
     if (!playing) idleEqualizer();
   </script>

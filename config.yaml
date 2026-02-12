@@ -6,6 +6,9 @@ language: "ru"
 # Папка с музыкой (mp3)
 music_dir: "music"
 
+# Папка с подкастами (mp3)
+podcasts_dir: "podcasts"
+
 # Папка кэша озвучек (TTS)
 cache_dir: "cache"
 
@@ -16,11 +19,11 @@ region:
   latitude: 38.56
   longitude: 68.78
 
-# Интервалы (минуты)
-intervals:
-  news_minutes: 180
-  weather_minutes: 240
-  # Новости: кол-во новостей в выпуске (заголовок + содержание ~800 символов)
+# Расписание по МСК (часы 0–23)
+schedule:
+  news_hours: [9, 12, 15, 18, 21]
+  weather_hours: [7, 10, 13, 16, 19]
+  podcast_hours: [11, 14, 17, 20]
   news_items: 8
 
 # TTS — provider: "edge" (free) | "elevenlabs"
@@ -48,3 +51,10 @@ ai:
 server:
   host: "0.0.0.0"
   port: 5000
+
+# ICEcast — единый эфир
+icecast:
+  url: "http://127.0.0.1:8000"
+  password: "hackme"
+  mount: "/live"
+  name: "NAVO RADIO"

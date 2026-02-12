@@ -52,12 +52,14 @@ def get_dj_comment(artist: str, title: str, city: str = "Dushanbe", language: st
 def get_transition(next_artist: str, next_title: str, segment_type: str = "track", language: str = "ru") -> str:
     """
     Transition phrase to the next segment.
-    segment_type: "track" | "news" | "weather"
+    segment_type: "track" | "news" | "weather" | "podcast"
     """
     if segment_type == "news":
         return lang.get(language, "transition_news")
     if segment_type == "weather":
         return lang.get(language, "transition_weather")
+    if segment_type == "podcast":
+        return lang.get(language, "transition_podcast")
     return lang.get(language, "transition_track", artist=next_artist, title=next_title)
 
 
