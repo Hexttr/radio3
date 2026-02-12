@@ -11,18 +11,26 @@ from urllib.parse import urlparse
 
 
 def _get_silence_fallback(cache_dir: Path, chunk_size: int = 8192):
-    """Генерирует ~3 сек тишины MP3 для паузы между сегментами."""
-    try:
-        from pydub import AudioSegment
-    except ImportError:
-        return b""
+    """~3 сек тишины MP3. Pydub или ffmpeg."""
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     path = cache_dir / "silence_3s.mp3"
-    if not path.exists() or path.stat().st_size < 100:
-        silence = AudioSegment.silent(duration=3000)
-        silence.export(path, format="mp3", bitrate="128k")
-    data = path.read_bytes()
+    try:
+        if not path.exists() or path.stat().st_size < 100:
+            try:
+                from pydub import AudioSegment
+                silence = AudioSegment.silent(duration=3000)
+                silence.export(str(path), format="mp3", bitrate="128k")
+            except Exception:
+                import subprocess
+                subprocess.run([
+                    "ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=d=3",
+                    "-q:a", "9", "-acodec", "libmp3lame", str(path)
+                ], capture_output=True, timeout=10, check=True)
+        data = path.read_bytes()
+    except Exception as e:
+        print(f"Silence fallback failed: {e}", file=sys.stderr)
+        return
     for i in range(0, len(data), chunk_size):
         yield data[i : i + chunk_size]
 
@@ -84,19 +92,23 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
             )
             sock.sendall(req.encode("ascii"))
 
-            # Прочитать ответ Icecast (100/200) перед отправкой тела
-            sock.settimeout(5)
+            # Дождаться 100/200 перед отправкой тела
+            sock.settimeout(10)
             resp = b""
             while b"\r\n\r\n" not in resp:
-                resp += sock.recv(4096)
-                if not resp:
-                    raise ConnectionError("Icecast closed connection")
-            first_line = resp.split(b"\r\n")[0].decode("ascii", errors="replace")
-            if "200" not in first_line and "100" not in first_line:
-                raise ConnectionError(f"Icecast rejected: {first_line}")
+                try:
+                    chunk = sock.recv(4096)
+                except socket.timeout:
+                    break
+                if not chunk:
+                    raise ConnectionError("Icecast closed")
+                resp += chunk
+            if resp:
+                first = resp.split(b"\r\n")[0].decode("ascii", errors="replace")
+                if "401" in first or "403" in first or "404" in first:
+                    raise ConnectionError(f"Icecast rejected: {first}")
 
-            print("Connected to Icecast", file=sys.stderr)
-            sock.settimeout(60)
+            sock.settimeout(120)
             sent = 0
             for chunk in gen:
                 sock.sendall(chunk)
