@@ -199,21 +199,22 @@
       const audio = new Audio(STREAM_URL);
       currentAudio = audio;
 
+      let retryCount = 0;
       audio.onerror = () => {
-        nowPlaying.innerHTML = '<span class="label">Ошибка</span> — не удалось подключиться к эфиру';
-      };
-      audio.onstalled = () => {
-        if (playing && currentAudio === audio) {
-          audio.load();
-          audio.play().catch(() => {});
+        if (playing && currentAudio === audio && retryCount < 2) {
+          retryCount++;
+          nowPlaying.innerHTML = '<span class="label">Переподключение</span>...';
+          setTimeout(() => {
+            if (playing && currentAudio === audio) {
+              audio.src = STREAM_URL + '&t=' + Date.now();
+              audio.play().catch(() => {});
+            }
+          }, 2000);
+        } else {
+          nowPlaying.innerHTML = '<span class="label">Ошибка</span> — не удалось подключиться к эфиру';
         }
       };
-      audio.onended = () => {
-        if (playing && currentAudio === audio) {
-          audio.src = STREAM_URL + '&t=' + Date.now();
-          audio.play().catch(() => {});
-        }
-      };
+      audio.onplaying = () => { retryCount = 0; };
 
       if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();

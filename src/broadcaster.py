@@ -24,8 +24,8 @@ def _log(msg: str) -> None:
     print(msg, file=sys.stderr)
 
 
-def _get_silence_fallback(cache_dir: Path, chunk_size: int = 8192):
-    """~3 сек тишины MP3. Pydub или ffmpeg."""
+def _ensure_silence_file(cache_dir: Path) -> Path | None:
+    """Создаёт silence_3s.mp3 если нет. Возвращает path или None."""
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     path = cache_dir / "silence_3s.mp3"
@@ -41,18 +41,54 @@ def _get_silence_fallback(cache_dir: Path, chunk_size: int = 8192):
                     "ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=d=3",
                     "-q:a", "9", "-acodec", "libmp3lame", str(path)
                 ], capture_output=True, timeout=10, check=True)
-        data = path.read_bytes()
+        return path
+    except Exception as e:
+        _log(f"Silence file creation failed: {e}")
+        return None
+
+
+def _get_silence_fallback(cache_dir: Path, chunk_size: int = 8192, duration_sec: float = 3.0):
+    """Тишина MP3. duration_sec=3 по умолчанию. При сбое — создаём 0.1с через ffmpeg."""
+    path = _ensure_silence_file(cache_dir)
+    if path:
+        try:
+            data = path.read_bytes()
+            n = int(len(data) * duration_sec / 3.0)  # пропорция от 3 сек
+            for i in range(0, min(n, len(data)), chunk_size):
+                yield data[i : i + chunk_size]
+            return
+        except Exception as e:
+            _log(f"Silence read failed: {e}")
+    # Fallback: 0.1 сек через ffmpeg
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    fallback = cache_dir / "silence_0.1s.mp3"
+    try:
+        import subprocess
+        subprocess.run([
+            "ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=d=0.1",
+            "-q:a", "9", "-acodec", "libmp3lame", str(fallback)
+        ], capture_output=True, timeout=5, check=True)
+        data = fallback.read_bytes()
+        for i in range(0, len(data), chunk_size):
+            yield data[i : i + chunk_size]
     except Exception as e:
         _log(f"Silence fallback failed: {e}")
-        return
-    for i in range(0, len(data), chunk_size):
-        yield data[i : i + chunk_size]
+        if path:
+            try:
+                data = path.read_bytes()
+                for i in range(0, len(data), chunk_size):
+                    yield data[i : i + chunk_size]
+            except Exception:
+                pass
 
 
 def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None = None):
     """Бесконечный генератор: читает сегменты и отдаёт байты. При паузе — тишина.
-    Неблокирующий get_segment_nowait — чтобы stream никогда не останавливался между сегментами."""
+    Неблокирующий get_segment_nowait — stream не останавливается между сегментами.
+    Паддинг ~0.1 сек между сегментами — чистая граница MP3 для декодера."""
     cache_dir = cache_dir or Path("cache")
+    _ensure_silence_file(cache_dir)  # Создать при старте
     while True:
         seg = scheduler.get_segment_nowait()
         if seg is None:
@@ -66,6 +102,9 @@ def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None =
             for chunk in _get_silence_fallback(cache_dir, chunk_size):
                 yield chunk
             continue
+        # Паддинг ~0.1 сек между сегментами — избегаем ошибок декодера на границе MP3
+        for chunk in _get_silence_fallback(cache_dir, chunk_size, duration_sec=0.12):
+            yield chunk
         _log(f"Playing: {path.name} ({path.stat().st_size} bytes)")
         try:
             with open(path, "rb") as f:
@@ -74,7 +113,8 @@ def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None =
                     if not chunk:
                         break
                     yield chunk
-        except Exception:
+        except Exception as e:
+            _log(f"Segment read error {path}: {e}")
             for chunk in _get_silence_fallback(cache_dir, chunk_size):
                 yield chunk
 
@@ -129,8 +169,8 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
 
             _log("Connected, starting stream...")
             sock.settimeout(120)
-            # Дроссель: 256 kbps = 32 KB/s (покрывает большинство MP3)
-            BYTES_PER_SEC = 32000
+            # Дроссель: 384 kbps = 48 KB/s — запас для плавности без подвисаний
+            BYTES_PER_SEC = 48000
             for chunk in gen:
                 sock.sendall(chunk)
                 time.sleep(len(chunk) / BYTES_PER_SEC)
