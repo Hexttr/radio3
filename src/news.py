@@ -2,23 +2,19 @@
 import feedparser
 from datetime import datetime
 
-RSS_FEEDS = [
-    "https://feeds.bbci.co.uk/news/rss.xml",
-    "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
-    "https://feeds.npr.org/1001/rss.xml",
-    "https://www.theguardian.com/world/rss",
-]
+from . import lang
 
 
-def fetch_news(limit: int = 5) -> str:
+def fetch_news(limit: int = 5, language: str = "ru") -> str:
     """
     Collect latest news from RSS.
     Returns text for TTS (brief bulletin).
     """
+    feeds = lang.RSS_BY_LANG.get(language, lang.RSS_BY_LANG["en"])
     items = []
     seen_titles = set()
 
-    for url in RSS_FEEDS:
+    for url in feeds:
         try:
             feed = feedparser.parse(url)
             for entry in feed.entries[:3]:
@@ -35,8 +31,10 @@ def fetch_news(limit: int = 5) -> str:
             break
 
     if not items:
-        return "News is temporarily unavailable. Back to the music."
+        return lang.get(language, "news_unavailable")
 
-    intro = f"News bulletin. {datetime.now().strftime('%d %B')}."
+    now = datetime.now()
+    date_str_val = lang.date_str(language, now.day, now.month)
+    intro = lang.get(language, "news_intro", date=date_str_val)
     lines = [intro] + [f"{i + 1}. {t}" for i, t in enumerate(items[:limit])]
     return " ".join(lines)

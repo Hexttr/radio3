@@ -2,7 +2,8 @@
 import os
 from typing import Optional
 
-# Groq — бесплатный тариф
+from . import lang
+
 try:
     from groq import Groq
     GROQ_AVAILABLE = True
@@ -17,14 +18,14 @@ def _get_client() -> Optional["Groq"]:
     return None
 
 
-def get_dj_comment(artist: str, title: str, city: str = "Dushanbe") -> str:
+def get_dj_comment(artist: str, title: str, city: str = "Dushanbe", language: str = "ru") -> str:
     """
     Short comment about the track: a fact about the artist or song.
     2-3 phrases, conversational.
     """
     client = _get_client()
     if not client:
-        return f"That was {artist} with «{title}». Great track! Up next, another one."
+        return lang.get(language, "dj_fallback", artist=artist, title=title)
 
     try:
         resp = client.chat.completions.create(
@@ -32,10 +33,7 @@ def get_dj_comment(artist: str, title: str, city: str = "Dushanbe") -> str:
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "You are a radio DJ. Reply in 2-3 short phrases in English only. "
-                        "Write an interesting fact about the artist or the song. No greetings, straight to the point."
-                    ),
+                    "content": lang.get(language, "dj_system"),
                 },
                 {
                     "role": "user",
@@ -46,28 +44,28 @@ def get_dj_comment(artist: str, title: str, city: str = "Dushanbe") -> str:
             temperature=0.7,
         )
         text = (resp.choices[0].message.content or "").strip()
-        return text if text else f"That was {artist}, «{title}». Next track coming up!"
+        return text if text else lang.get(language, "dj_fallback", artist=artist, title=title)
     except Exception:
-        return f"That was {artist} — «{title}». Great tune! Next up."
+        return lang.get(language, "dj_fallback", artist=artist, title=title)
 
 
-def get_transition(next_artist: str, next_title: str, segment_type: str = "track") -> str:
+def get_transition(next_artist: str, next_title: str, segment_type: str = "track", language: str = "ru") -> str:
     """
     Transition phrase to the next segment.
     segment_type: "track" | "news" | "weather"
     """
     if segment_type == "news":
-        return "And now, the news briefing!"
+        return lang.get(language, "transition_news")
     if segment_type == "weather":
-        return "Here's the weather forecast!"
-    return f"Up next — {next_artist}, «{next_title}»."
+        return lang.get(language, "transition_weather")
+    return lang.get(language, "transition_track", artist=next_artist, title=next_title)
 
 
-def format_news_dj(intro: str) -> str:
+def format_news_dj(intro: str, language: str = "ru") -> str:
     """Brief intro before news."""
-    return intro if intro else "News briefing."
+    return intro if intro else lang.get(language, "transition_news")
 
 
-def format_weather_dj(intro: str) -> str:
+def format_weather_dj(intro: str, language: str = "ru") -> str:
     """Brief intro before weather."""
-    return intro if intro else "Weather forecast for today."
+    return intro if intro else lang.get(language, "transition_weather")

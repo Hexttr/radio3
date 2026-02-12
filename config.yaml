@@ -1,5 +1,8 @@
 # AI Radio — конфигурация
 
+# Язык (ru | en | tj): диджей, новости, погода
+language: "ru"
+
 # Папка с музыкой (mp3)
 music_dir: "music"
 
@@ -20,7 +23,7 @@ intervals:
 
 # TTS — provider: "edge" (free) | "elevenlabs"
 tts:
-  provider: "edge"
+  provider: "elevenlabs"
   # Edge settings
   voice: "en-GB-SoniaNeural"
   rate: "+0%"

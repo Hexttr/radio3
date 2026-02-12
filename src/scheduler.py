@@ -13,6 +13,7 @@ from .tts import generate_tts
 from .ai_dj import get_dj_comment, get_transition
 from .news import fetch_news
 from .weather import fetch_weather
+from . import lang
 
 
 class Scheduler:
@@ -45,6 +46,7 @@ class Scheduler:
         self.weather_minutes = intervals.get("weather_minutes", 240)
         tts_cfg = config.get("tts", {})
         self.tts_config = dict(tts_cfg)
+        self.language = config.get("language", "ru")
 
     def _load_tracks(self) -> list[Path]:
         tracks = []
@@ -116,22 +118,22 @@ class Scheduler:
         play_weather = self._should_play_weather()
 
         if play_news:
-            trans = get_transition("", "", "news")
+            trans = get_transition("", "", "news", self.language)
             trans_path = self._add_tts(trans, "dj")
             if trans_path:
                 self.segment_queue.put(trans_path)
-            text = fetch_news()
+            text = fetch_news(language=self.language)
             path = self._add_tts(text, "news")
             if path:
                 self.segment_queue.put(path)
             return
 
         if play_weather:
-            trans = get_transition("", "", "weather")
+            trans = get_transition("", "", "weather", self.language)
             trans_path = self._add_tts(trans, "dj")
             if trans_path:
                 self.segment_queue.put(trans_path)
-            text = fetch_weather(self.lat, self.lon, self.city, self.timezone)
+            text = fetch_weather(self.lat, self.lon, self.city, self.timezone, language=self.language)
             path = self._add_tts(text, "weather")
             if path:
                 self.segment_queue.put(path)
@@ -145,13 +147,13 @@ class Scheduler:
         artist, title = parse_track(next_track)
 
         if hasattr(self, "_last_artist") and hasattr(self, "_last_title"):
-            comment = get_dj_comment(self._last_artist, self._last_title, self.city)
+            comment = get_dj_comment(self._last_artist, self._last_title, self.city, self.language)
             comment_path = self._add_tts(comment, "dj")
             if comment_path:
                 self.segment_queue.put(comment_path)
 
         self._last_artist, self._last_title = artist, title
-        trans = get_transition(artist, title, "track")
+        trans = get_transition(artist, title, "track", self.language)
         trans_path = self._add_tts(trans, "dj")
         if trans_path:
             self.segment_queue.put(trans_path)
@@ -180,7 +182,7 @@ class Scheduler:
         else:
             self._last_artist, self._last_title = "Radio", "No tracks in music folder"
             fallback = self._add_tts(
-                "Welcome to AI Radio. Add mp3 files to the music folder and restart.",
+                lang.get(self.language, "welcome"),
                 "system",
             )
             if fallback:
