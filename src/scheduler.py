@@ -74,7 +74,8 @@ class Scheduler:
         slot = int(m // self.news_minutes) * self.news_minutes
         if slot <= self._last_news_at:
             return False
-        if m - slot < 2:
+        # Окно 15 мин в начале каждого слота — успеем попасть при любом темпе очереди
+        if m - slot < 15:
             self._last_news_at = slot
             return True
         return False
@@ -86,7 +87,7 @@ class Scheduler:
         slot = int(m // self.weather_minutes) * self.weather_minutes
         if slot <= self._last_weather_at:
             return False
-        if m - slot < 2:
+        if m - slot < 15:
             self._last_weather_at = slot
             return True
         return False
