@@ -36,6 +36,11 @@ def create_app() -> Flask:
     music_dir.mkdir(exist_ok=True)
     cache_dir.mkdir(exist_ok=True)
 
+    # Удалить битые 0-byte файлы из кэша
+    for p in cache_dir.rglob("*.mp3"):
+        if p.stat().st_size == 0:
+            p.unlink()
+
     scheduler = Scheduler(music_dir, cache_dir, config)
     scheduler.start()
 
@@ -55,7 +60,7 @@ def create_app() -> Flask:
         if segment is None:
             return "", 204
         path = Path(segment)
-        if not path.exists():
+        if not path.exists() or path.stat().st_size == 0:
             return "", 204
         data = path.read_bytes()
 

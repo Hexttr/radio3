@@ -23,13 +23,13 @@ def _get_summary(entry) -> str:
         ""
     )
     text = _strip_html(raw)
-    # Ограничим длину: ~100 слов или 600 символов
-    if len(text) > 600:
-        text = text[:597].rsplit(maxsplit=1)[0] + "..."
+    # Ограничим длину: ~120 слов или 800 символов
+    if len(text) > 800:
+        text = text[:797].rsplit(maxsplit=1)[0] + "..."
     return text
 
 
-def fetch_news(limit: int = 5, language: str = "ru") -> str:
+def fetch_news(limit: int = 8, language: str = "ru") -> str:
     """
     Собирает последние новости из RSS.
     Для каждой новости: заголовок + краткое содержание (если есть).
@@ -42,7 +42,7 @@ def fetch_news(limit: int = 5, language: str = "ru") -> str:
     for url in feeds:
         try:
             feed = feedparser.parse(url)
-            for entry in feed.entries[:3]:
+            for entry in feed.entries[:5]:
                 title = getattr(entry, "title", "") or ""
                 if not title or title in seen_titles:
                     continue
@@ -66,4 +66,8 @@ def fetch_news(limit: int = 5, language: str = "ru") -> str:
     date_str_val = lang.date_str(language, now.day, now.month)
     intro = lang.get(language, "news_intro", date=date_str_val)
     lines = [intro] + [f"{i + 1}. {t}" for i, t in enumerate(items[:limit])]
-    return " ".join(lines)
+    result = " ".join(lines)
+    # ElevenLabs limit 10k symbols — обрезаем до 9000
+    if len(result) > 9000:
+        result = result[:8997].rsplit(maxsplit=1)[0] + "..."
+    return result

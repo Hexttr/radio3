@@ -45,6 +45,7 @@ class Scheduler:
         intervals = config.get("intervals", {})
         self.news_minutes = intervals.get("news_minutes", 180)
         self.weather_minutes = intervals.get("weather_minutes", 240)
+        self.news_items = intervals.get("news_items", 8)
         tts_cfg = config.get("tts", {})
         self.tts_config = dict(tts_cfg)
         self.language = config.get("language", "ru")
@@ -123,7 +124,7 @@ class Scheduler:
             trans_path = self._add_tts(trans, "dj")
             if trans_path:
                 self.segment_queue.put(trans_path)
-            text = fetch_news(language=self.language)
+            text = fetch_news(limit=self.news_items, language=self.language)
             salt = datetime.now().strftime("%Y-%m-%d-%H")
             path = self._add_tts(text, "news", salt)
             if path:

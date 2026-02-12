@@ -20,10 +20,14 @@ region:
 intervals:
   news_minutes: 180
   weather_minutes: 240
+  # Новости: кол-во новостей в выпуске (заголовок + содержание ~800 символов)
+  news_items: 8
 
 # TTS — provider: "edge" (free) | "elevenlabs"
 tts:
   provider: "elevenlabs"
+  # Усиление голоса (dB), чтобы TTS не уступал музыке. +6 — заметно громче
+  volume_boost_db: 6
   # Edge settings
   voice: "en-GB-SoniaNeural"
   rate: "+0%"
