@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Radio</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #e8e8e8;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 2rem;
+      font-weight: 300;
+      margin: 0 0 0.5rem;
+      letter-spacing: 0.1em;
+    }
+    .subtitle {
+      opacity: 0.7;
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+    .player-wrap {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .btn {
+      padding: 0.75rem 2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #e94560;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #d63852; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+    .status.playing { color: #4ade80; }
+    .status.paused { color: #fbbf24; }
+    .status.error { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI Radio</h1>
+    <p class="subtitle">Музыка · Диджей · Новости · Погода</p>
+    <div class="player-wrap">
+      <button id="playBtn" class="btn">▶ Слушать эфир</button>
+      <p id="status" class="status">Нажмите кнопку для начала</p>
+    </div>
+  </div>
+  <script>
+    const playBtn = document.getElementById('playBtn');
+    const status = document.getElementById('status');
+
+    let playing = false;
+    let preloaded = null;
+
+    function setStatus(text, state = '') {
+      status.textContent = text;
+      status.className = 'status ' + state;
+    }
+
+    function revokeUrl(url) {
+      if (url) try { URL.revokeObjectURL(url); } catch (_) {}
+    }
+
+    async function startPlayback() {
+      playing = true;
+      playBtn.textContent = '🔊 В эфире';
+      playBtn.disabled = true;
+      setStatus('В эфире', 'playing');
+      await preloadNext();
+      playPreloaded();
+    }
+
+    async function preloadNext() {
+      while (playing) {
+        try {
+          const res = await fetch('/api/next');
+          if (res.status === 204) {
+            await new Promise(r => setTimeout(r, 500));
+            continue;
+          }
+          const blob = await res.blob();
+          preloaded = { url: URL.createObjectURL(blob) };
+          return;
+        } catch (e) {
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+    }
+
+    function playPreloaded() {
+      if (!playing) return;
+      if (!preloaded) {
+        setTimeout(playPreloaded, 100);
+        return;
+      }
+      const { url } = preloaded;
+      preloaded = null;
+      preloadNext();
+
+      const audio = new Audio(url);
+      audio.onended = () => {
+        revokeUrl(url);
+        playPreloaded();
+      };
+      audio.onerror = () => {
+        revokeUrl(url);
+        playPreloaded();
+      };
+      audio.play();
+    }
+
+    playBtn.onclick = () => startPlayback();
+  </script>
+</body>
+</html>

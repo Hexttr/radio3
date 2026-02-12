@@ -1,0 +1,38 @@
+# AI Radio — конфигурация
+
+# Папка с музыкой (mp3)
+music_dir: "music"
+
+# Папка кэша озвучек (TTS)
+cache_dir: "cache"
+
+# Регион (город для погоды и новостей)
+region:
+  city: "Москва"
+  timezone: "Europe/Moscow"
+  # Координаты Москвы для погоды
+  latitude: 55.7558
+  longitude: 37.6173
+
+# Интервалы (минуты)
+intervals:
+  news_minutes: 180
+  weather_minutes: 240
+
+# TTS — Edge (бесплатно)
+tts:
+  voice: "ru-RU-SvetlanaNeural"
+  rate: "+0%"
+  volume: "+0%"
+
+# AI Диджей — Groq (бесплатный тариф)
+# Получить ключ: https://console.groq.com
+ai:
+  provider: "groq"
+  model: "llama-3.1-8b-instant"
+  api_key_env: "GROQ_API_KEY"
+
+# Порты
+server:
+  host: "0.0.0.0"
+  port: 5000
