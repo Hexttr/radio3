@@ -120,15 +120,16 @@ WantedBy=multi-user.target
             f"systemctl restart ai-radio",
         ], "Systemd")
 
-        # 6. Nginx + HTTPS (домен novoradio.com)
-        domain = os.environ.get("DEPLOY_DOMAIN", "novoradio.com")
-        email = os.environ.get("DEPLOY_EMAIL", "admin@novoradio.com")
+        # 6. Nginx + HTTPS (домен navoradio.com)
+        domain = os.environ.get("DEPLOY_DOMAIN", "navoradio.com")
+        email = os.environ.get("DEPLOY_EMAIL", "admin@navoradio.com")
 
         run_commands(client, [
             "apt-get install -y -qq nginx certbot python3-certbot-nginx",
         ], "Nginx + Certbot")
 
-        nginx_conf = f"""server {{
+        nginx_conf = f"""# NAVO RADIO — только {domain}, без редиректов
+server {{
     listen 80;
     server_name {domain} www.{domain};
     location / {{
@@ -142,13 +143,13 @@ WantedBy=multi-user.target
 }}
 """
         sftp = client.open_sftp()
-        with sftp.open("/etc/nginx/sites-available/ai-radio", "w") as f:
+        with sftp.open(f"/etc/nginx/sites-available/navoradio", "w") as f:
             f.write(nginx_conf)
         sftp.close()
 
         run_commands(client, [
-            "ln -sf /etc/nginx/sites-available/ai-radio /etc/nginx/sites-enabled/",
-            "rm -f /etc/nginx/sites-enabled/default",
+            "rm -f /etc/nginx/sites-enabled/ai-radio",
+            "ln -sf /etc/nginx/sites-available/navoradio /etc/nginx/sites-enabled/",
             "nginx -t && systemctl reload nginx",
         ], "Nginx config")
 
