@@ -6,8 +6,22 @@ import base64
 import socket
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
+
+LOG_PATH = Path(__file__).resolve().parent.parent / "broadcaster.log"
+
+
+def _log(msg: str) -> None:
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{ts}] {msg}\n"
+    try:
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(line)
+    except Exception:
+        pass
+    print(msg, file=sys.stderr)
 
 
 def _get_silence_fallback(cache_dir: Path, chunk_size: int = 8192):
@@ -29,7 +43,7 @@ def _get_silence_fallback(cache_dir: Path, chunk_size: int = 8192):
                 ], capture_output=True, timeout=10, check=True)
         data = path.read_bytes()
     except Exception as e:
-        print(f"Silence fallback failed: {e}", file=sys.stderr)
+        _log(f"Silence fallback failed: {e}")
         return
     for i in range(0, len(data), chunk_size):
         yield data[i : i + chunk_size]
@@ -41,14 +55,17 @@ def stream_generator(scheduler, chunk_size: int = 8192, cache_dir: Path | None =
     while True:
         seg = scheduler.get_segment(timeout=5)
         if seg is None:
+            _log("Queue empty, sending silence")
             for chunk in _get_silence_fallback(cache_dir, chunk_size):
                 yield chunk
             continue
         path = Path(seg)
         if not path.exists() or path.stat().st_size == 0:
+            _log(f"Segment missing/empty: {path}")
             for chunk in _get_silence_fallback(cache_dir, chunk_size):
                 yield chunk
             continue
+        _log(f"Playing: {path.name} ({path.stat().st_size} bytes)")
         try:
             with open(path, "rb") as f:
                 while True:
@@ -107,7 +124,9 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
                 first = resp.split(b"\r\n")[0].decode("ascii", errors="replace")
                 if "401" in first or "403" in first or "404" in first:
                     raise ConnectionError(f"Icecast rejected: {first}")
+                _log(f"Icecast response: {first}")
 
+            _log("Connected, starting stream...")
             sock.settimeout(120)
             sent = 0
             for chunk in gen:
@@ -118,7 +137,7 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
                     sent = 0
 
         except Exception as e:
-            print(f"Broadcaster error: {e}", file=sys.stderr)
+            _log(f"Broadcaster error: {e}")
         finally:
             try:
                 if sock:

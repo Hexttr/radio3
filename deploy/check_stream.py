@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Проверка Icecast и broadcaster на сервере."""
 import os
+import sys
 import paramiko
 
 c = paramiko.SSHClient()
@@ -9,12 +10,13 @@ c.connect(os.environ["DEPLOY_HOST"], username="root", password=os.environ["DEPLO
 
 for label, cmd in [
     ("Icecast GET /live", "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/live"),
-    ("Broadcaster log", "journalctl -u ai-radio-broadcaster -n 20 --no-pager 2>/dev/null"),
-    ("Icecast mounts", "curl -s http://127.0.0.1:8000/status-json.xsl 2>/dev/null | head -30"),
+    ("broadcaster.log", "tail -80 /opt/ai-radio/broadcaster.log 2>/dev/null || echo 'no log'"),
+    ("journalctl broadcaster", "journalctl -u ai-radio-broadcaster -n 25 --no-pager 2>/dev/null"),
+    ("Icecast status", "curl -s http://127.0.0.1:8000/status-json.xsl 2>/dev/null | head -20"),
 ]:
-    print("\n---", label, "---")
+    sys.stdout.write("\n--- " + label + " ---\n")
     _, o, _ = c.exec_command(cmd)
     r = o.read().decode("utf-8", errors="replace")
-    print(r[:600] if len(r) > 600 else r)
+    sys.stdout.write(r[:1200] + "\n" if len(r) > 1200 else r + "\n")
 
 c.close()
