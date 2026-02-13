@@ -150,6 +150,15 @@ class Scheduler:
         self._last_podcast_hour = h
         return True
 
+    def _get_fallback_dj(self) -> Path | None:
+        """Короткая фраза при сбое TTS. Создаётся один раз при первом вызове."""
+        if hasattr(self, "_fallback_dj_path") and self._fallback_dj_path and self._fallback_dj_path.exists():
+            return self._fallback_dj_path
+        text = lang.get(self.language, "fallback_dj")
+        path = self._add_tts(text, "dj", "fallback")
+        self._fallback_dj_path = path if path and path.exists() else None
+        return self._fallback_dj_path
+
     def _add_tts(self, text: str, subdir: str = "dj", cache_salt: str = "") -> Path | None:
         cache_sub = self.cache_dir / subdir
         try:
@@ -204,23 +213,22 @@ class Scheduler:
 
         artist, title = parse_track(next_track)
 
+        fallback_dj = self._get_fallback_dj()
         if hasattr(self, "_last_artist") and hasattr(self, "_last_title"):
             comment = get_dj_comment(self._last_artist, self._last_title, self.city, self.language)
             comment_path = self._add_tts(comment, "dj")
             if comment_path:
                 self.segment_queue.put(comment_path)
-            else:
-                import sys
-                print(f"DJ SKIP comment (TTS failed): {self._last_artist} — {self._last_title}", file=sys.stderr)
+            elif fallback_dj:
+                self.segment_queue.put(fallback_dj)
 
         self._last_artist, self._last_title = artist, title
         trans = get_transition(artist, title, "track", self.language)
         trans_path = self._add_tts(trans, "dj")
         if trans_path:
             self.segment_queue.put(trans_path)
-        else:
-            import sys
-            print(f"DJ SKIP transition (TTS failed): {artist} — {title}", file=sys.stderr)
+        elif fallback_dj:
+            self.segment_queue.put(fallback_dj)
         self.segment_queue.put(next_track)
 
     def _run_generator(self) -> None:

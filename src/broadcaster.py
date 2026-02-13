@@ -83,32 +83,51 @@ def _get_silence_fallback(cache_dir: Path, chunk_size: int = 8192, duration_sec:
                 pass
 
 
-def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None = None):
-    """Бесконечный генератор: читает сегменты и отдаёт байты. При паузе — тишина.
-    Неблокирующий get_segment_nowait — stream не останавливается между сегментами.
-    Паддинг ~0.1 сек между сегментами — чистая граница MP3 для декодера."""
-    cache_dir = cache_dir or Path("cache")
-    _ensure_silence_file(cache_dir)  # Создать при старте
-    while True:
-        seg = scheduler.get_segment_nowait()
-        if seg is None:
-            _log("Queue empty, sending silence")
-            for chunk in _get_silence_fallback(cache_dir, chunk_size, duration_sec=0.5):
-                yield chunk
-            continue
-        path = Path(seg)
-        if not path.exists() or path.stat().st_size == 0:
-            _log(f"Segment missing/empty: {path}")
-            for chunk in _get_silence_fallback(cache_dir, chunk_size):
-                yield chunk
-            continue
-        # Паддинг ~0.1 сек между сегментами — избегаем ошибок декодера на границе MP3
-        for chunk in _get_silence_fallback(cache_dir, chunk_size, duration_sec=0.05):
+def _safe_silence_chunks(cache_dir: Path, chunk_size: int, duration_sec: float = 0.5):
+    """Всегда отдаёт хотя бы один chunk тишины. Никогда не падает."""
+    yielded = False
+    try:
+        for chunk in _get_silence_fallback(cache_dir, chunk_size, duration_sec):
+            yielded = True
             yield chunk
-        parent = path.parent.name
-        seg_type = "dj" if parent in ("dj", "news", "weather", "system") else "track"
-        _log(f"Playing [{seg_type}]: {path.name} ({path.stat().st_size} bytes)")
+    except Exception as e:
+        _log(f"Silence error: {e}")
+    if not yielded:
+        # Крайний fallback: читаем silence ещё раз
         try:
+            p = _ensure_silence_file(cache_dir)
+            if p and p.exists():
+                data = p.read_bytes()
+                if data:
+                    for i in range(0, min(len(data), int(16000 * duration_sec)), chunk_size):
+                        yield data[i : i + chunk_size]
+        except Exception:
+            pass
+
+
+def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None = None):
+    """Бесконечный генератор. Не падает — при любой ошибке отдаёт тишину и продолжает."""
+    cache_dir = cache_dir or Path("cache")
+    _ensure_silence_file(cache_dir)
+    while True:
+        try:
+            seg = scheduler.get_segment_nowait()
+            if seg is None:
+                _log("Queue empty, sending silence")
+                for chunk in _safe_silence_chunks(cache_dir, chunk_size, 0.5):
+                    yield chunk
+                continue
+            path = Path(seg)
+            if not path.exists() or path.stat().st_size == 0:
+                _log(f"Segment missing/empty: {path}")
+                for chunk in _safe_silence_chunks(cache_dir, chunk_size, 0.5):
+                    yield chunk
+                continue
+            for chunk in _safe_silence_chunks(cache_dir, chunk_size, 0.05):
+                yield chunk
+            parent = path.parent.name
+            seg_type = "dj" if parent in ("dj", "news", "weather", "system") else "track"
+            _log(f"Playing [{seg_type}]: {path.name} ({path.stat().st_size} bytes)")
             with open(path, "rb") as f:
                 while True:
                     chunk = f.read(chunk_size)
@@ -116,8 +135,10 @@ def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None =
                         break
                     yield chunk
         except Exception as e:
-            _log(f"Segment read error {path}: {e}")
-            for chunk in _get_silence_fallback(cache_dir, chunk_size):
+            _log(f"Stream generator error: {e}")
+            import traceback
+            _log(traceback.format_exc())
+            for chunk in _safe_silence_chunks(cache_dir, chunk_size, 1.0):
                 yield chunk
 
 
@@ -185,6 +206,6 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
             try:
                 if sock:
                     sock.close()
-            except Exception:
-                pass
-        time.sleep(5)
+        except Exception:
+            pass
+        time.sleep(2)
