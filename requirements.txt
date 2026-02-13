@@ -8,3 +8,5 @@ feedparser>=6.0.0
 requests>=2.31.0
 pydub>=0.25.0
 mutagen>=1.47.0
+# Python 3.13+ — audioop удалён из stdlib
+audioop-lts; python_version >= "3.13"
