@@ -209,12 +209,18 @@ class Scheduler:
             comment_path = self._add_tts(comment, "dj")
             if comment_path:
                 self.segment_queue.put(comment_path)
+            else:
+                import sys
+                print(f"DJ SKIP comment (TTS failed): {self._last_artist} — {self._last_title}", file=sys.stderr)
 
         self._last_artist, self._last_title = artist, title
         trans = get_transition(artist, title, "track", self.language)
         trans_path = self._add_tts(trans, "dj")
         if trans_path:
             self.segment_queue.put(trans_path)
+        else:
+            import sys
+            print(f"DJ SKIP transition (TTS failed): {artist} — {title}", file=sys.stderr)
         self.segment_queue.put(next_track)
 
     def _run_generator(self) -> None:
