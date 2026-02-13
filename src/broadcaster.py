@@ -206,6 +206,6 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
             try:
                 if sock:
                     sock.close()
-        except Exception:
-            pass
+            except Exception:
+                pass
         time.sleep(2)
