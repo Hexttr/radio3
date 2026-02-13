@@ -105,7 +105,9 @@ def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None =
         # Паддинг ~0.1 сек между сегментами — избегаем ошибок декодера на границе MP3
         for chunk in _get_silence_fallback(cache_dir, chunk_size, duration_sec=0.12):
             yield chunk
-        _log(f"Playing: {path.name} ({path.stat().st_size} bytes)")
+        parent = path.parent.name
+        seg_type = "dj" if parent in ("dj", "news", "weather", "system") else "track"
+        _log(f"Playing [{seg_type}]: {path.name} ({path.stat().st_size} bytes)")
         try:
             with open(path, "rb") as f:
                 while True:
