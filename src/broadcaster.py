@@ -93,7 +93,7 @@ def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None =
         seg = scheduler.get_segment_nowait()
         if seg is None:
             _log("Queue empty, sending silence")
-            for chunk in _get_silence_fallback(cache_dir, chunk_size):
+            for chunk in _get_silence_fallback(cache_dir, chunk_size, duration_sec=0.5):
                 yield chunk
             continue
         path = Path(seg)
@@ -103,7 +103,7 @@ def stream_generator(scheduler, chunk_size: int = 4096, cache_dir: Path | None =
                 yield chunk
             continue
         # Паддинг ~0.1 сек между сегментами — избегаем ошибок декодера на границе MP3
-        for chunk in _get_silence_fallback(cache_dir, chunk_size, duration_sec=0.12):
+        for chunk in _get_silence_fallback(cache_dir, chunk_size, duration_sec=0.05):
             yield chunk
         parent = path.parent.name
         seg_type = "dj" if parent in ("dj", "news", "weather", "system") else "track"

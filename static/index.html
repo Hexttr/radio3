@@ -92,12 +92,6 @@
     .play-btn:active {
       transform: translate(-50%, -50%) scale(0.98);
     }
-    .now-playing {
-      font-size: 0.95rem;
-      opacity: 0.9;
-      min-height: 1.4em;
-    }
-    .now-playing .label { color: #a78bfa; }
   </style>
 </head>
 <body>
@@ -108,12 +102,9 @@
     <div class="equalizer" id="equalizer"></div>
     <button id="playBtn" class="play-btn" title="Включить">▶</button>
   </div>
-  <div class="container">
-    <p id="nowPlaying" class="now-playing"><span class="label">Сейчас играет</span> — нажмите Play</p>
-  </div>
+  <div class="container"></div>
   <script>
     const playBtn = document.getElementById('playBtn');
-    const nowPlaying = document.getElementById('nowPlaying');
     const equalizer = document.getElementById('equalizer');
 
     const BAR_COUNT = 32;
@@ -134,10 +125,6 @@
       equalizer.appendChild(bar);
     }
     const bars = equalizer.querySelectorAll('.eq-bar');
-
-    function setNowPlayingLive() {
-      nowPlaying.innerHTML = '<span class="label">Сейчас играет</span> — NAVO RADIO · Прямой эфир';
-    }
 
     function updateEqualizer(freqData) {
       if (!freqData || freqData.length === 0) return;
@@ -194,7 +181,6 @@
       playBtn.textContent = '■';
       playBtn.title = 'Остановить';
       stopIdleEqualizer();
-      setNowPlayingLive();
 
       const audio = new Audio(STREAM_URL);
       currentAudio = audio;
@@ -203,15 +189,12 @@
       audio.onerror = () => {
         if (playing && currentAudio === audio && retryCount < 2) {
           retryCount++;
-          nowPlaying.innerHTML = '<span class="label">Переподключение</span>...';
           setTimeout(() => {
             if (playing && currentAudio === audio) {
               audio.src = STREAM_URL + '&t=' + Date.now();
               audio.play().catch(() => {});
             }
           }, 2000);
-        } else {
-          nowPlaying.innerHTML = '<span class="label">Ошибка</span> — не удалось подключиться к эфиру';
         }
       };
       audio.onplaying = () => { retryCount = 0; };
