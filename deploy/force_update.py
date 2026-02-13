@@ -7,6 +7,16 @@ import os
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
+try:
+    from dotenv import load_dotenv
+    for f in (ROOT / ".env.deploy", ROOT / ".env"):
+        if f.exists():
+            load_dotenv(f)
+            break
+except ImportError:
+    pass
+
 try:
     import paramiko
 except ImportError:
