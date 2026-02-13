@@ -192,8 +192,8 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
 
             _log("Connected, starting stream...")
             sock.settimeout(120)
-            # Дроссель: 384 kbps = 48 KB/s — запас для плавности без подвисаний
-            BYTES_PER_SEC = 48000
+            # Дроссель: 128 kbps MP3 = 16 KB/s — реальное время воспроизведения
+            BYTES_PER_SEC = 16000
             for chunk in gen:
                 sock.sendall(chunk)
                 time.sleep(len(chunk) / BYTES_PER_SEC)
