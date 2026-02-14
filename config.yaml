@@ -58,6 +58,6 @@ icecast:
   password: "hackme"
   mount: "/live"
   name: "NAVO RADIO"
-  # broadcaster: "ffmpeg" — стабильный CBR через ffmpeg (рекомендуется)
-  # broadcaster: "socket" — ручной дроссель через сокет
-  broadcaster: "ffmpeg"
+  # broadcaster: "ffmpeg" — через ffmpeg (пока 404)
+  # broadcaster: "socket" — сокет, работает
+  broadcaster: "socket"
