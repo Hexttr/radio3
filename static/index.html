@@ -1,285 +1,593 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <link rel="icon" href="data:,">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f1724" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <link rel="icon" href="data:," />
   <title>NAVO RADIO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    * { box-sizing: border-box; }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0f1724;
+      --bg-card: #141e2e;
+      --primary: hsl(270, 70%, 60%);
+      --primary-dim: hsl(270, 50%, 25%);
+      --primary-glow: hsl(270, 80%, 58%);
+      --primary-light: hsl(280, 90%, 72%);
+      --text: hsl(240, 20%, 92%);
+      --text-muted: hsl(222, 15%, 55%);
+      --border: hsl(222, 30%, 18%);
+      --emerald: #34d399;
+      --amber: #fbbf24;
+    }
     body {
-      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    ::selection { background: hsl(270, 70%, 60% / 0.3); }
+    .radio-main {
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      color: #e8e8e8;
-    }
-    .container {
-      text-align: center;
-      padding: 1.5rem 2rem;
+      min-height: 100vh;
       width: 100%;
-      max-width: 900px;
+      padding: 2rem 1rem;
     }
-    .eq-wrap {
-      width: 100%;
-      align-self: stretch;
-      position: relative;
-    }
-    h1 {
-      font-size: 3.5rem;
-      font-weight: 700;
-      margin: 0 0 2rem;
-      letter-spacing: 0.15em;
-      color: #a855f7;
-      text-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
-    }
-    .eq-wrap {
-      position: relative;
-      width: 100%;
-      height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 1.5rem;
-    }
-    .equalizer {
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 3px;
-      width: 100%;
-      height: 80px;
-      padding: 0 2rem;
-    }
-    .eq-bar {
-      flex: 1;
-      min-width: 6px;
-      max-width: 24px;
-      height: 8px;
-      background: linear-gradient(to top, #7c3aed, #a855f7);
-      border-radius: 4px 4px 0 0;
-      transition: height 0.05s ease-out;
-    }
-    .play-btn {
+    .ambient-glow {
+      pointer-events: none;
       position: absolute;
-      left: 50%;
-      top: 50%;
+      left: 50%; top: 50%;
       transform: translate(-50%, -50%);
-      width: 72px;
-      height: 72px;
-      border: none;
+      width: 600px; height: 600px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-      color: white;
-      font-size: 1.5rem;
-      cursor: pointer;
-      box-shadow: 0 4px 20px rgba(168, 85, 247, 0.5), 0 0 0 4px rgba(168, 85, 247, 0.2);
-      transition: transform 0.2s, box-shadow 0.2s;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background: radial-gradient(circle, hsl(270 70% 60% / 0.08) 0%, transparent 70%);
+      filter: blur(60px);
+    }
+    .lang-selector {
+      position: absolute; right: 1.5rem; top: 1.5rem;
+      display: flex; align-items: center; gap: 4px;
+      border-radius: 8px; border: 1px solid var(--border);
+      background: hsl(225, 40%, 10% / 0.6); padding: 4px;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+    .lang-btn {
+      border: none; background: transparent; border-radius: 6px;
+      padding: 6px 12px; font-size: 11px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+      font-family: inherit;
+    }
+    .lang-btn:hover { color: var(--text); }
+    .lang-btn.active {
+      background: var(--primary); color: #fff;
+      box-shadow: 0 4px 12px hsl(270, 70%, 60% / 0.3);
+    }
+    .title {
+      margin-bottom: 0.5rem; text-align: center;
+      font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 700;
+      letter-spacing: 0.3em; color: var(--primary);
+      position: relative; z-index: 1;
+    }
+    .status {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 2.5rem; position: relative; z-index: 1;
+    }
+    .status-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: hsl(222, 15%, 55% / 0.4); transition: all 0.3s;
+    }
+    .status-dot.live {
+      background: var(--emerald);
+      box-shadow: 0 0 12px hsl(160, 60%, 50% / 0.5);
+      animation: pulse 2s infinite;
+    }
+    .status-dot.connecting {
+      background: var(--amber);
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .status-text {
+      font-size: 11px; font-weight: 500; text-transform: uppercase;
+      letter-spacing: 0.2em; color: var(--text-muted);
+    }
+    .equalizer-wrapper {
+      position: relative; width: 100%; max-width: 42rem;
+      padding: 0 1rem; z-index: 1;
+    }
+    .equalizer-canvas {
+      display: block; width: 100%; height: 160px;
+    }
+    @media (min-width: 768px) { .equalizer-canvas { height: 192px; } }
+    @media (min-width: 1024px) { .equalizer-canvas { height: 224px; } }
+    .play-btn {
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 64px; height: 64px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      border: 2px solid hsl(270, 70%, 60% / 0.3);
+      background: hsl(225, 40%, 10% / 0.8);
+      color: var(--primary);
+      box-shadow: 0 25px 50px hsl(270, 70%, 60% / 0.2);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      cursor: pointer; transition: all 0.2s;
     }
     .play-btn:hover {
-      transform: translate(-50%, -50%) scale(1.08);
-      box-shadow: 0 6px 28px rgba(168, 85, 247, 0.6);
+      transform: translate(-50%, -50%) scale(1.1);
+      border-color: hsl(270, 70%, 60% / 0.6);
+      box-shadow: 0 25px 50px hsl(270, 70%, 60% / 0.4);
     }
-    .play-btn:active {
-      transform: translate(-50%, -50%) scale(0.98);
+    .play-btn:active { transform: translate(-50%, -50%) scale(0.95); }
+    .play-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .play-btn svg { width: 24px; height: 24px; }
+    .play-btn .play-icon { margin-left: 3px; }
+    @media (min-width: 768px) {
+      .play-btn { width: 80px; height: 80px; }
+      .play-btn svg { width: 28px; height: 28px; }
+    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; }
+    .now-playing {
+      margin-top: 2rem; display: flex; flex-direction: column;
+      align-items: center; gap: 8px; position: relative; z-index: 1;
+    }
+    .now-playing-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.25em; color: var(--text-muted);
+    }
+    .now-playing-song {
+      text-align: center; font-size: 1.125rem; font-weight: 500;
+      color: var(--text); text-wrap: balance; overflow: hidden;
+    }
+    @media (min-width: 768px) { .now-playing-song { font-size: 1.25rem; } }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeIn 0.6s ease-out; }
+    .volume-control {
+      margin-top: 2rem; display: flex; align-items: center; gap: 12px;
+      width: 100%; max-width: 20rem; position: relative; z-index: 1;
+    }
+    .volume-btn {
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; transition: color 0.2s;
+      display: flex; align-items: center; padding: 4px;
+    }
+    .volume-btn:hover { color: var(--text); }
+    .volume-btn svg { width: 20px; height: 20px; }
+    .volume-slider-wrapper { flex: 1; }
+    .volume-slider {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 4px; border-radius: 2px;
+      outline: none; cursor: pointer;
+      background: linear-gradient(to right, var(--primary) 0%, var(--primary) 75%, var(--border) 75%, var(--border) 100%);
+    }
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 10px hsl(270, 70%, 60% / 0.5);
+      cursor: pointer; transition: transform 0.15s;
+    }
+    .volume-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .volume-slider::-moz-range-thumb {
+      width: 14px; height: 14px; border: none; border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 10px hsl(270, 70%, 60% / 0.5);
+      cursor: pointer;
+    }
+    .volume-slider::-moz-range-track {
+      height: 4px; border-radius: 2px; background: var(--border);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>NAVO RADIO</h1>
-  </div>
-  <div class="eq-wrap">
-    <div class="equalizer" id="equalizer"></div>
-    <button id="playBtn" class="play-btn" title="Включить">▶</button>
-  </div>
-  <div class="container"></div>
+  <main class="radio-main">
+    <div class="ambient-glow"></div>
+    <div class="lang-selector" role="group" aria-label="Language">
+      <button class="lang-btn active" data-lang="ru" aria-label="Russian">RU</button>
+      <button class="lang-btn" data-lang="tj" aria-label="Tajik">TJ</button>
+      <button class="lang-btn" data-lang="en" aria-label="English">EN</button>
+    </div>
+    <h1 class="title" id="radioTitle">NAVO RADIO</h1>
+    <div class="status">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="status-text" id="statusText"></span>
+    </div>
+    <div class="equalizer-wrapper">
+      <canvas class="equalizer-canvas" id="equalizerCanvas"></canvas>
+      <button class="play-btn" id="playBtn" aria-label="Play">
+        <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </button>
+    </div>
+    <div class="now-playing">
+      <span class="now-playing-label" id="nowPlayingLabel"></span>
+      <div class="now-playing-song" id="nowPlayingSong"></div>
+    </div>
+    <div class="volume-control">
+      <button class="volume-btn" id="muteBtn" aria-label="Mute">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 5L6 9H2v6h4l5 4V5z" />
+          <path d="M15.54 8.46a5 5 0 010 7.07" />
+          <path d="M19.07 4.93a10 10 0 010 14.14" />
+        </svg>
+      </button>
+      <div class="volume-slider-wrapper">
+        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.01" value="0.75" aria-label="Volume" />
+      </div>
+    </div>
+  </main>
+
   <script>
-    const playBtn = document.getElementById('playBtn');
-    const equalizer = document.getElementById('equalizer');
+    const translations = {
+      en: { title: "NAVO RADIO", nowPlaying: "Now Playing", loading: "Loading...", play: "Play", pause: "Pause", volume: "Volume", live: "LIVE", offline: "Offline", connecting: "Connecting...", news: "News", weather: "Weather" },
+      ru: { title: "NAVO RADIO", nowPlaying: "Сейчас играет", loading: "Загрузка...", play: "Воспроизвести", pause: "Пауза", volume: "Громкость", live: "ЭФИР", offline: "Не в сети", connecting: "Подключение...", news: "Новости", weather: "Погода" },
+      tj: { title: "NAVO RADIO", nowPlaying: "Ҳоло мешунавед", loading: "Боргирӣ...", play: "Пахш", pause: "Таваққуф", volume: "Овоз", live: "МУСТАҚИМ", offline: "Офлайн", connecting: "Пайвастшавӣ...", news: "Ахбор", weather: "Обь" }
+    };
 
-    const BAR_COUNT = 32;
-    const STREAM_URL = '/live?nocache=1';
-    let useFallback = false;
-    let playing = false;
-    let muted = false;
-    let currentAudio = null;
-    let audioContext = null;
+    const STREAM_URL = "/live?nocache=1";
+    const NOW_API = "/api/now";
+
+    let currentLang = "ru";
+    let isPlaying = false;
+    let isConnecting = false;
+    let currentVolume = 0.75;
+    let currentSong = "";
+    let animFrameId = 0;
+    let audio = null;
+    let audioCtx = null;
     let analyser = null;
-    let currentSource = null;
-    let animationId = null;
+    let source = null;
+    let retryCount = 0;
+    let stalledTimer = null;
 
-    for (let i = 0; i < BAR_COUNT; i++) {
-      const bar = document.createElement('div');
-      bar.className = 'eq-bar';
-      bar.dataset.i = i;
-      equalizer.appendChild(bar);
-    }
-    const bars = equalizer.querySelectorAll('.eq-bar');
+    const titleEl = document.getElementById("radioTitle");
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const canvas = document.getElementById("equalizerCanvas");
+    const ctx = canvas.getContext("2d");
+    const playBtn = document.getElementById("playBtn");
+    const nowPlayingLabel = document.getElementById("nowPlayingLabel");
+    const nowPlayingSong = document.getElementById("nowPlayingSong");
+    const muteBtn = document.getElementById("muteBtn");
+    const volumeSlider = document.getElementById("volumeSlider");
+    const langButtons = document.querySelectorAll(".lang-btn");
 
-    function updateEqualizer(freqData) {
-      if (!freqData || freqData.length === 0) return;
-      const step = Math.floor(freqData.length / BAR_COUNT);
-      bars.forEach((bar, i) => {
-        const idx = Math.min(i * step, freqData.length - 1);
-        const val = freqData[idx] || 0;
-        const h = Math.max(6, 8 + (val / 255) * 70);
-        bar.style.height = h + 'px';
-      });
-    }
-
-    function idleEqualizer() {
-      const t = Date.now() / 200;
-      bars.forEach((bar, i) => {
-        const wave = Math.sin(t + i * 0.3) * 0.5 + 0.5;
-        const h = 8 + wave * 25;
-        bar.style.height = h + 'px';
-      });
-      animationId = requestAnimationFrame(idleEqualizer);
-    }
-
-    function stopIdleEqualizer() {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-        animationId = null;
+    function updateUI() {
+      const t = translations[currentLang];
+      titleEl.textContent = t.title;
+      nowPlayingLabel.textContent = t.nowPlaying;
+      nowPlayingSong.textContent = currentSong || t.loading;
+      playBtn.setAttribute("aria-label", isPlaying ? t.pause : t.play);
+      volumeSlider.setAttribute("aria-label", t.volume);
+      if (isConnecting) {
+        statusText.textContent = t.connecting;
+        statusDot.className = "status-dot connecting";
+      } else if (isPlaying) {
+        statusText.textContent = t.live;
+        statusDot.className = "status-dot live";
+      } else {
+        statusText.textContent = t.offline;
+        statusDot.className = "status-dot";
       }
     }
 
-    function runEqualizerLoop() {
-      if (!analyser || muted) return;
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      let zeroFrames = 0;
-      function tick() {
-        if (!playing || muted) return;
-        analyser.getByteFrequencyData(data);
-        const allZeros = data.every(v => v === 0);
-        if (allZeros && zeroFrames++ > 10) {
-          updateEqualizerSimulated();
-        } else {
-          if (!allZeros) zeroFrames = 0;
-          updateEqualizer(data);
+    function updatePlayIcon() {
+      if (isConnecting) {
+        playBtn.innerHTML = '<svg class="spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity="0.3"/><path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+      } else if (isPlaying) {
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
+      } else {
+        playBtn.innerHTML = '<svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+      }
+    }
+
+    function updateVolumeIcon() {
+      if (currentVolume === 0) {
+        muteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+      } else {
+        let w = '<path d="M11 5L6 9H2v6h4l5 4V5z"/>';
+        if (currentVolume > 0.3) w += '<path d="M15.54 8.46a5 5 0 010 7.07"/>';
+        if (currentVolume > 0.6) w += '<path d="M19.07 4.93a10 10 0 010 14.14"/>';
+        muteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + w + '</svg>';
+      }
+    }
+
+    function updateVolumeSliderBg() {
+      volumeSlider.style.background = "linear-gradient(to right, var(--primary) 0%, var(--primary) " + (currentVolume * 100) + "%, var(--border) " + (currentVolume * 100) + "%, var(--border) 100%)";
+    }
+
+    function setSong(name) {
+      currentSong = name;
+      nowPlayingSong.textContent = name;
+      nowPlayingSong.classList.remove("fade-in");
+      void nowPlayingSong.offsetWidth;
+      nowPlayingSong.classList.add("fade-in");
+    }
+
+    function fetchNowPlaying() {
+      fetch(NOW_API).then(function(r) { return r.json(); }).then(function(data) {
+        var t = translations[currentLang];
+        if (data.type === "track" && (data.artist || data.title)) {
+          setSong(data.artist ? data.artist + " — " + data.title : data.title);
+        } else if (data.type === "news") {
+          setSong(t.news);
+        } else if (data.type === "weather") {
+          setSong(t.weather);
+        } else if (data.type === "dj") {
+          setSong("NAVO RADIO");
         }
-        animationId = requestAnimationFrame(tick);
-      }
-      tick();
+      }).catch(function() {});
     }
 
-    function updateEqualizerSimulated() {
-      const t = Date.now() / 80;
-      bars.forEach((bar, i) => {
-        const wave = Math.sin(t + i * 0.4) * 0.5 + 0.5;
-        const noise = Math.sin(t * 2.3 + i) * 0.2 + 0.8;
-        const h = Math.max(8, 12 + (wave * noise) * 60);
-        bar.style.height = h + 'px';
-      });
+    function drawBar(ctx, x, y, w, h, gradient) {
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(x, y, w, h, [3, 3, 0, 0]);
+      } else {
+        ctx.rect(x, y, w, h);
+      }
+      ctx.fill();
+    }
+
+    function drawLiveEqualizer() {
+      if (!analyser) return;
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      let zeroFrames = 0;
+
+      function draw() {
+        animFrameId = requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArray);
+
+        const allZeros = dataArray.every(function(v) { return v === 0; });
+        if (allZeros && zeroFrames++ > 10) {
+          drawSimulatedEqualizer();
+          return;
+        }
+        if (!allZeros) zeroFrames = 0;
+
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+
+        const W = rect.width;
+        const H = rect.height;
+        ctx.clearRect(0, 0, W, H);
+
+        const barCount = 64;
+        const gap = 3;
+        const barWidth = (W - gap * (barCount - 1)) / barCount;
+        const step = Math.floor(bufferLength / barCount);
+
+        for (let i = 0; i < barCount; i++) {
+          const raw = dataArray[i * step] / 255;
+          const barHeight = Math.max(raw * H * 0.85, 3);
+          const x = i * (barWidth + gap);
+          const y = H - barHeight;
+          const gradient = ctx.createLinearGradient(x, H, x, y);
+          gradient.addColorStop(0, "hsl(270, 70%, 40%)");
+          gradient.addColorStop(0.5, "hsl(270, 80%, 58%)");
+          gradient.addColorStop(1, "hsl(280, 90%, 72%)");
+          drawBar(ctx, x, y, barWidth, barHeight, gradient);
+          ctx.shadowColor = "hsl(270, 80%, 58%)";
+          ctx.shadowBlur = 8;
+          drawBar(ctx, x, y, barWidth, barHeight, gradient);
+          ctx.shadowBlur = 0;
+        }
+      }
+      draw();
+    }
+
+    function drawSimulatedEqualizer() {
+      let t = 0;
+      function draw() {
+        animFrameId = requestAnimationFrame(draw);
+        t += 0.02;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+        const W = rect.width;
+        const H = rect.height;
+        ctx.clearRect(0, 0, W, H);
+        const barCount = 64;
+        const gap = 3;
+        const barWidth = (W - gap * (barCount - 1)) / barCount;
+        for (let i = 0; i < barCount; i++) {
+          const n = i / barCount;
+          const wave = Math.sin(t + n * 4) * 0.5 + Math.sin(t * 2.3 + i) * 0.2 + 0.5;
+          const barHeight = Math.max(wave * H * 0.4, 8);
+          const x = i * (barWidth + gap);
+          const y = H - barHeight;
+          const gradient = ctx.createLinearGradient(x, H, x, y);
+          gradient.addColorStop(0, "hsl(270, 70%, 40%)");
+          gradient.addColorStop(1, "hsl(280, 90%, 72%)");
+          drawBar(ctx, x, y, barWidth, barHeight, gradient);
+        }
+      }
+      draw();
+    }
+
+    let idleTime = 0;
+    function drawIdleEqualizer() {
+      function drawIdle() {
+        animFrameId = requestAnimationFrame(drawIdle);
+        idleTime += 0.02;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+        const W = rect.width;
+        const H = rect.height;
+        ctx.clearRect(0, 0, W, H);
+        const barCount = 64;
+        const gap = 3;
+        const barWidth = (W - gap * (barCount - 1)) / barCount;
+        for (let i = 0; i < barCount; i++) {
+          const n = i / barCount;
+          const wave = Math.sin(idleTime + n * 4) * 0.15 + Math.sin(idleTime * 1.5 + n * 6) * 0.1 + 0.08;
+          const barHeight = Math.max(wave * H, 3);
+          const x = i * (barWidth + gap);
+          const y = H - barHeight;
+          const gradient = ctx.createLinearGradient(x, H, x, y);
+          gradient.addColorStop(0, "hsl(270, 50%, 25%)");
+          gradient.addColorStop(1, "hsl(270, 60%, 40%)");
+          drawBar(ctx, x, y, barWidth, barHeight, gradient);
+        }
+      }
+      drawIdle();
     }
 
     function createAndConnectAudio() {
-      const audio = new Audio(STREAM_URL);
-      currentAudio = audio;
-      let retryCount = 0;
-      let stalledTimer = null;
+      audio = new Audio(STREAM_URL);
+      audio.volume = currentVolume;
 
-      audio.onerror = () => {
-        if (playing && currentAudio === audio && retryCount < 5) {
+      audio.onerror = function() {
+        if (isPlaying && retryCount < 5) {
           retryCount++;
-          setTimeout(() => {
-            if (playing && currentAudio === audio) {
-              audio.src = STREAM_URL + '&t=' + Date.now();
-              audio.play().catch(() => {});
+          setTimeout(function() {
+            if (isPlaying) {
+              audio.src = STREAM_URL + "&t=" + Date.now();
+              audio.play().catch(function() {});
             }
           }, 2000);
         }
       };
-      audio.onplaying = () => { retryCount = 0; if (stalledTimer) clearTimeout(stalledTimer); stalledTimer = null; };
-      audio.onended = () => {
-        if (playing && currentAudio === audio) {
-          createAndConnectAudio();
-        }
+      audio.onplaying = function() {
+        retryCount = 0;
+        isConnecting = false;
+        playBtn.disabled = false;
+        if (stalledTimer) { clearTimeout(stalledTimer); stalledTimer = null; }
+        updatePlayIcon();
+        updateUI();
       };
-      audio.onstalled = () => {
-        if (!playing || currentAudio !== audio) return;
+      audio.onended = function() {
+        if (isPlaying) createAndConnectAudio();
+      };
+      audio.onstalled = function() {
+        if (!isPlaying) return;
         if (stalledTimer) clearTimeout(stalledTimer);
-        stalledTimer = setTimeout(() => {
+        stalledTimer = setTimeout(function() {
           stalledTimer = null;
-          if (playing && currentAudio === audio && audio.readyState < 3) {
-            createAndConnectAudio();
-          }
+          if (isPlaying && audio.readyState < 3) createAndConnectAudio();
         }, 8000);
       };
 
-      if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.6;
-        analyser.connect(audioContext.destination);
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
-      if (currentSource) currentSource.disconnect();
-      currentSource = audioContext.createMediaElementSource(audio);
-      currentSource.connect(analyser);
+      if (source) source.disconnect();
+      source = audioCtx.createMediaElementSource(audio);
+      if (!analyser) {
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+      }
+      source.connect(analyser);
+      analyser.connect(audioCtx.destination);
 
-      const startPlayback = () => {
-        audio.play();
-        runEqualizerLoop();
+      var startPlayback = function() {
+        audio.play().then(function() {
+          cancelAnimationFrame(animFrameId);
+          drawLiveEqualizer();
+        }).catch(function() {
+          isConnecting = false;
+          isPlaying = false;
+          playBtn.disabled = false;
+          updatePlayIcon();
+          updateUI();
+        });
       };
-      if (audioContext.state === 'suspended') {
-        audioContext.resume().then(startPlayback).catch(startPlayback);
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume().then(startPlayback).catch(startPlayback);
       } else {
         startPlayback();
       }
     }
 
-    function startPlayback() {
-      if (playing && !muted) return;
-      if (muted && currentAudio) {
-        muted = false;
-        playBtn.textContent = '■';
-        playBtn.title = 'Остановить';
-        currentAudio.play();
-        runEqualizerLoop();
+    function togglePlay() {
+      if (isPlaying) {
+        if (audio) {
+          audio.pause();
+          audio.src = "";
+        }
+        isPlaying = false;
+        cancelAnimationFrame(animFrameId);
+        drawIdleEqualizer();
+        updatePlayIcon();
+        updateUI();
         return;
       }
-      playing = true;
-      muted = false;
-      playBtn.textContent = '■';
-      playBtn.title = 'Остановить';
-      stopIdleEqualizer();
+
+      isPlaying = true;
+      isConnecting = true;
+      playBtn.disabled = true;
+      updatePlayIcon();
+      updateUI();
+
       createAndConnectAudio();
     }
 
-    function stopPlayback() {
-      muted = true;
-      playBtn.textContent = '▶';
-      playBtn.title = 'Включить';
-      if (currentAudio) {
-        currentAudio.pause();
-      }
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-        animationId = null;
-      }
-      idleEqualizer();
-    }
+    playBtn.addEventListener("click", togglePlay);
+    langButtons.forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        langButtons.forEach(function(b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        currentLang = btn.dataset.lang;
+        document.documentElement.lang = currentLang === "tj" ? "tg" : currentLang;
+        updateUI();
+      });
+    });
+    volumeSlider.addEventListener("input", function() {
+      currentVolume = parseFloat(this.value);
+      if (audio) audio.volume = currentVolume;
+      updateVolumeSliderBg();
+      updateVolumeIcon();
+    });
+    muteBtn.addEventListener("click", function() {
+      currentVolume = currentVolume > 0 ? 0 : 0.75;
+      volumeSlider.value = currentVolume;
+      if (audio) audio.volume = currentVolume;
+      updateVolumeSliderBg();
+      updateVolumeIcon();
+    });
 
-    playBtn.onclick = () => {
-      if (playing && !muted) {
-        stopPlayback();
-      } else {
-        startPlayback();
-      }
-    };
+    setSong(translations[currentLang].loading);
+    updateUI();
+    updateVolumeSliderBg();
+    updateVolumeIcon();
+    drawIdleEqualizer();
 
-    if (!playing) idleEqualizer();
+    fetchNowPlaying();
+    setInterval(fetchNowPlaying, 12000);
   </script>
 </body>
 </html>

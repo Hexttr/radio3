@@ -105,6 +105,23 @@ def create_app() -> Flask:
             "next_podcast": sorted(h for h in [11, 14, 17, 20] if h > msk_now.hour or msk_now.hour >= 20)[:1] or [11],
         })
 
+    @app.route("/api/now")
+    def api_now():
+        """Текущий/следующий сегмент в очереди — для отображения «сейчас играет»."""
+        segment = scheduler.peek_next_segment()
+        if segment is None:
+            return jsonify({"artist": "", "title": "", "type": ""})
+        path = Path(segment)
+        parent = path.parent.name
+        if parent == "news":
+            return jsonify({"artist": "", "title": "", "type": "news"})
+        if parent == "weather":
+            return jsonify({"artist": "", "title": "", "type": "weather"})
+        if parent in ("dj", "system"):
+            return jsonify({"artist": "", "title": "", "type": "dj"})
+        artist, title = parse_track(path)
+        return jsonify({"artist": artist, "title": title, "type": "track"})
+
     @app.route("/api/next")
     @app.route("/next")
     def next_segment():
