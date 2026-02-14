@@ -219,7 +219,7 @@
         </svg>
       </button>
     </div>
-    <div class="now-playing">
+    <div class="now-playing" style="display: none;">
       <span class="now-playing-label" id="nowPlayingLabel"></span>
       <div class="now-playing-song" id="nowPlayingSong"></div>
     </div>
@@ -595,8 +595,7 @@
     updateVolumeIcon();
     drawIdleEqualizer();
 
-    fetchNowPlaying();
-    setInterval(fetchNowPlaying, 12000);
+    // fetchNowPlaying(); setInterval(fetchNowPlaying, 12000); // временно отключено
   </script>
 </body>
 </html>
