@@ -228,8 +228,8 @@ def run_broadcaster(scheduler, icecast_url: str, password: str, mount: str = "/l
 
             _log("Connected, starting stream...")
             sock.settimeout(120)
-            # Дроссель: 128 kbps = 16 KB/s; 24 KB/s (+50%) — запас буфера для стабильности
-            BYTES_PER_SEC = 24000
+            # Дроссель: 128 kbps = 16 KB/s; 20 KB/s (+25%) — умеренный буфер, меньше подвисаний
+            BYTES_PER_SEC = 20000
             for chunk in gen:
                 sock.sendall(chunk)
                 time.sleep(len(chunk) / BYTES_PER_SEC)
