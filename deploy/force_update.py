@@ -52,6 +52,10 @@ def main():
         "systemctl restart icecast2 ai-radio ai-radio-broadcaster",
         "sleep 1 && systemctl status icecast2 --no-pager || true",
         "sleep 2 && systemctl is-active ai-radio ai-radio-broadcaster icecast2",
+        # Nginx: отключить HTTP/2 для /live — ERR_HTTP2_PROTOCOL_ERROR при стриминге
+        "for f in /etc/nginx/sites-available/navoradio /etc/nginx/sites-available/navoradio-le-ssl.conf /etc/nginx/sites-enabled/navoradio; do [ -f \"$f\" ] && sed -i 's/listen 443 ssl http2/listen 443 ssl/g' \"$f\"; done",
+        "for f in /etc/nginx/sites-available/navoradio /etc/nginx/sites-available/navoradio-le-ssl.conf /etc/nginx/sites-enabled/navoradio; do [ -f \"$f\" ] && grep -q 'proxy_send_timeout 86400' \"$f\" || sed -i '/proxy_read_timeout 86400s;/a\\\n        proxy_send_timeout 86400s;' \"$f\"; done",
+        "nginx -t 2>/dev/null && systemctl reload nginx 2>/dev/null || true",
     ]
     for cmd in cmds:
         print(f"\n$ {cmd}")
