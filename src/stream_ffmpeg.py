@@ -1,8 +1,8 @@
 """
-Стриминг через ffmpeg — стабильный CBR, буферизация на стороне ffmpeg.
-Вместо ручного дросселя: ffmpeg читает из pipe, кодирует в CBR 128k, стримит в Icecast.
-Python подаёт MP3-байты в stdin; ffmpeg сам контролирует темп выдачи.
-Pipe buffer (~64KB) даёт естественный backpressure — не нужно sleep().
+Стриминг через ffmpeg — единый CBR 128k 44.1kHz для всех клиентов.
+Перекодирование устраняет: invalid packets на границах сегментов, разный sample rate
+(диджей 44.1k vs музыка 48k), VBR — причина "3x скорость" на мобильных.
+-fflags +discardcorrupt -err_detect ignore_err — не падать на битых пакетах.
 """
 import subprocess
 import threading
@@ -37,14 +37,20 @@ def run_ffmpeg_broadcaster(scheduler, icecast_url: str, password: str, mount: st
     _ensure_silence_file(cache_dir)
     dest = _icecast_url(icecast_url, password, mount or "/live")
 
-    # ffmpeg: stdin (mp3) -> copy (без перекодирования) -> Icecast
-    # -c copy: pass-through, нет ошибок декодера на границах сегментов
+    # ffmpeg: stdin (mp3) -> decode -> CBR 128k 44.1kHz stereo -> Icecast
+    # Перекодирование: единый формат для всех клиентов (мобильные, десктоп)
+    # discardcorrupt + ignore_err — не падать на битых пакетах на границах сегментов
     cmd = [
         "ffmpeg",
         "-hide_banner", "-loglevel", "warning",
+        "-fflags", "+discardcorrupt",
+        "-err_detect", "ignore_err",
         "-f", "mp3",
         "-i", "pipe:0",
-        "-c", "copy",
+        "-c:a", "libmp3lame",
+        "-b:a", "128k",
+        "-ar", "44100",
+        "-ac", "2",
         "-f", "mp3",
         "-content_type", "audio/mpeg",
         "-ice_name", name,

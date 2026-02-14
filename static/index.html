@@ -166,28 +166,14 @@
       tick();
     }
 
-    function startPlayback() {
-      if (playing && !muted) return;
-      if (muted && currentAudio) {
-        muted = false;
-        playBtn.textContent = '■';
-        playBtn.title = 'Остановить';
-        currentAudio.play();
-        runEqualizerLoop();
-        return;
-      }
-      playing = true;
-      muted = false;
-      playBtn.textContent = '■';
-      playBtn.title = 'Остановить';
-      stopIdleEqualizer();
-
+    function createAndConnectAudio() {
       const audio = new Audio(STREAM_URL);
       currentAudio = audio;
-
       let retryCount = 0;
+      let stalledTimer = null;
+
       audio.onerror = () => {
-        if (playing && currentAudio === audio && retryCount < 2) {
+        if (playing && currentAudio === audio && retryCount < 5) {
           retryCount++;
           setTimeout(() => {
             if (playing && currentAudio === audio) {
@@ -197,7 +183,22 @@
           }, 2000);
         }
       };
-      audio.onplaying = () => { retryCount = 0; };
+      audio.onplaying = () => { retryCount = 0; if (stalledTimer) clearTimeout(stalledTimer); stalledTimer = null; };
+      audio.onended = () => {
+        if (playing && currentAudio === audio) {
+          createAndConnectAudio();
+        }
+      };
+      audio.onstalled = () => {
+        if (!playing || currentAudio !== audio) return;
+        if (stalledTimer) clearTimeout(stalledTimer);
+        stalledTimer = setTimeout(() => {
+          stalledTimer = null;
+          if (playing && currentAudio === audio && audio.readyState < 3) {
+            createAndConnectAudio();
+          }
+        }, 8000);
+      };
 
       if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -215,6 +216,24 @@
       }
       audio.play();
       runEqualizerLoop();
+    }
+
+    function startPlayback() {
+      if (playing && !muted) return;
+      if (muted && currentAudio) {
+        muted = false;
+        playBtn.textContent = '■';
+        playBtn.title = 'Остановить';
+        currentAudio.play();
+        runEqualizerLoop();
+        return;
+      }
+      playing = true;
+      muted = false;
+      playBtn.textContent = '■';
+      playBtn.title = 'Остановить';
+      stopIdleEqualizer();
+      createAndConnectAudio();
     }
 
     function stopPlayback() {
