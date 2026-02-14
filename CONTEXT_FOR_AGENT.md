@@ -12,7 +12,8 @@
 
 | Файл | Назначение |
 |------|------------|
-| `src/broadcaster.py` | Стримит сегменты в Icecast, дроссель 48 KB/s, паддинг между MP3 |
+| `src/broadcaster.py` | Стримит через сокет (режим socket) |
+| `src/stream_ffmpeg.py` | Стримит через ffmpeg pipe→CBR→Icecast (режим ffmpeg, рекомендуется) |
 | `src/scheduler.py` | Расписание, очереди сегментов, TTS для диджея/новостей/погоды |
 | `src/main.py` | Flask: `/api/status`, `/api/ping`, `/api/log` |
 | `run.py` | Точка входа Flask + Scheduler |
@@ -54,7 +55,8 @@ python deploy/force_update.py
 
 ## Важные детали
 
-- Broadcaster использует `get_segment_nowait()` — не блокируется между сегментами
+- `icecast.broadcaster`: "ffmpeg" (по умолчанию) или "socket"
+- ffmpeg: pipe→decode→CBR 128k→Icecast, без ручного дросселя
 - При пустой очереди — тишина (`cache/silence_3s.mp3`)
 - TTS: ElevenLabs с retry 3x при сбоях
 - Музыка: `music/*.mp3`, подкасты: `podcasts/*.mp3`

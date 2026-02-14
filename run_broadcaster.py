@@ -13,6 +13,7 @@ import yaml
 
 from src.scheduler import Scheduler
 from src.broadcaster import run_broadcaster
+from src.stream_ffmpeg import run_ffmpeg_broadcaster
 
 ROOT_DIR = Path(__file__).resolve().parent
 
@@ -42,9 +43,13 @@ def main():
     password = ice.get("password", "hackme")
     mount = ice.get("mount", "/live")
     name = ice.get("name", "NAVO RADIO")
+    mode = (ice.get("broadcaster") or "ffmpeg").lower()
 
-    print(f"Broadcaster → {url}{mount} ({name})")
-    run_broadcaster(scheduler, url, password, mount, name)
+    print(f"Broadcaster ({mode}) → {url}{mount} ({name})")
+    if mode == "ffmpeg":
+        run_ffmpeg_broadcaster(scheduler, url, password, mount, name)
+    else:
+        run_broadcaster(scheduler, url, password, mount, name)
 
 
 if __name__ == "__main__":
