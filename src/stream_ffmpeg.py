@@ -5,6 +5,7 @@ Python подаёт MP3-байты в stdin; ffmpeg сам контролиру�
 Pipe buffer (~64KB) даёт естественный backpressure — не нужно sleep().
 """
 import subprocess
+import threading
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -37,29 +38,58 @@ def run_ffmpeg_broadcaster(scheduler, icecast_url: str, password: str, mount: st
     dest = _icecast_url(icecast_url, password, mount or "/live")
 
     # ffmpeg: stdin (mp3) -> decode -> CBR 128k -> Icecast
+    # -f mp3: явный формат входа (pipe)
+    # -ice_name: метаданные (Icecast 2.4+ использует HTTP PUT)
     cmd = [
         "ffmpeg",
         "-hide_banner", "-loglevel", "warning",
+        "-f", "mp3",
         "-i", "pipe:0",
         "-c:a", "libmp3lame",
         "-b:a", "128k",
         "-f", "mp3",
         "-content_type", "audio/mpeg",
+        "-ice_name", name,
         dest,
     ]
 
     while True:
         try:
+            gen = _stream_segments(scheduler, cache_dir)
+            prebuf = b""
+            _log("Prebuffering 64KB...")
+            for chunk in gen:
+                prebuf += chunk
+                if len(prebuf) >= 65536:
+                    break
+            if not prebuf:
+                _log("Prebuffer empty, using silence")
+                prebuf = b"".join(_get_silence_fallback(cache_dir, CHUNK_SIZE, 1.0))
+
             _log("Starting ffmpeg stream...")
             proc = subprocess.Popen(
                 cmd,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
-                bufsize=65536,  # 64 KB буфер
+                bufsize=65536,
             )
+            proc.stdin.write(prebuf)
+            proc.stdin.flush()
 
-            for chunk in _stream_segments(scheduler, cache_dir):
+            err_lines = []
+
+            def read_stderr():
+                for line in proc.stderr:
+                    s = line.decode("utf-8", errors="replace").strip()
+                    if s:
+                        err_lines.append(s)
+                        _log(f"ffmpeg: {s}")
+
+            stderr_thread = threading.Thread(target=read_stderr, daemon=True)
+            stderr_thread.start()
+
+            for chunk in gen:
                 if proc.poll() is not None:
                     break
                 try:
@@ -69,9 +99,10 @@ def run_ffmpeg_broadcaster(scheduler, icecast_url: str, password: str, mount: st
                     break
 
             proc.stdin.close()
-            _, err = proc.communicate(timeout=5)
-            if err:
-                _log(f"ffmpeg stderr: {err.decode('utf-8', errors='replace')[:500]}")
+            proc.wait(timeout=10)
+            stderr_thread.join(timeout=2)
+            if err_lines:
+                _log(f"ffmpeg exit (last): {'; '.join(err_lines[-3:])}")
         except Exception as e:
             _log(f"ffmpeg broadcaster error: {e}")
             import traceback
