@@ -37,17 +37,14 @@ def run_ffmpeg_broadcaster(scheduler, icecast_url: str, password: str, mount: st
     _ensure_silence_file(cache_dir)
     dest = _icecast_url(icecast_url, password, mount or "/live")
 
-    # ffmpeg: stdin (mp3) -> decode -> CBR 128k -> Icecast
-    # -fflags +discardcorrupt: игнорировать битые фреймы на границе пребуфера
-    # -f mp3: явный формат входа (pipe)
+    # ffmpeg: stdin (mp3) -> copy (без перекодирования) -> Icecast
+    # -c copy: pass-through, нет ошибок декодера на границах сегментов
     cmd = [
         "ffmpeg",
         "-hide_banner", "-loglevel", "warning",
-        "-fflags", "+discardcorrupt",
         "-f", "mp3",
         "-i", "pipe:0",
-        "-c:a", "libmp3lame",
-        "-b:a", "128k",
+        "-c", "copy",
         "-f", "mp3",
         "-content_type", "audio/mpeg",
         "-ice_name", name,
