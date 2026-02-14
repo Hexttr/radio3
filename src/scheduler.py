@@ -3,6 +3,7 @@
 Расписание по часам МСК. Между слотыми — треки + реплики диджея.
 """
 import random
+import sys
 import threading
 import time
 from datetime import datetime
@@ -216,6 +217,7 @@ class Scheduler:
         fallback_dj = self._get_fallback_dj()
         if hasattr(self, "_last_artist") and hasattr(self, "_last_title"):
             comment = get_dj_comment(self._last_artist, self._last_title, self.city, self.language)
+            print(f"DJ comment about: {self._last_artist} — {self._last_title}", file=sys.stderr)
             comment_path = self._add_tts(comment, "dj")
             if comment_path:
                 self.segment_queue.put(comment_path)
@@ -223,6 +225,7 @@ class Scheduler:
                 self.segment_queue.put(fallback_dj)
 
         self._last_artist, self._last_title = artist, title
+        print(f"DJ transition to: {artist} — {title}", file=sys.stderr)
         trans = get_transition(artist, title, "track", self.language)
         trans_path = self._add_tts(trans, "dj")
         if trans_path:

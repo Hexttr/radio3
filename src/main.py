@@ -2,6 +2,7 @@
 AI Radio — точка входа.
 Веб-сервер: заходи на страницу и слушай поток.
 """
+import json
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -107,7 +108,18 @@ def create_app() -> Flask:
 
     @app.route("/api/now")
     def api_now():
-        """Текущий/следующий сегмент в очереди — для отображения «сейчас играет»."""
+        """Текущий сегмент в эфире — broadcaster пишет в .now_playing.json."""
+        now_file = cache_dir / ".now_playing.json"
+        if now_file.exists():
+            try:
+                data = json.loads(now_file.read_text(encoding="utf-8"))
+                return jsonify({
+                    "artist": data.get("artist", ""),
+                    "title": data.get("title", ""),
+                    "type": data.get("type", ""),
+                })
+            except Exception:
+                pass
         segment = scheduler.peek_next_segment()
         if segment is None:
             return jsonify({"artist": "", "title": "", "type": ""})

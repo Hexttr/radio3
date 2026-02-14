@@ -4,6 +4,7 @@
 (диджей 44.1k vs музыка 48k), VBR — причина "3x скорость" на мобильных.
 -fflags +discardcorrupt -err_detect ignore_err — не падать на битых пакетах.
 """
+import json
 import subprocess
 import threading
 import time
@@ -17,6 +18,25 @@ from .broadcaster import (
     _log,
     _safe_silence_chunks,
 )
+from .track_parser import parse_track
+
+
+def _write_now_playing(path: Path, cache_dir: Path) -> None:
+    """Сохранить текущий сегмент в файл для /api/now."""
+    try:
+        parent = path.parent.name
+        if parent == "news":
+            data = {"path": str(path), "artist": "", "title": "", "type": "news"}
+        elif parent == "weather":
+            data = {"path": str(path), "artist": "", "title": "", "type": "weather"}
+        elif parent in ("dj", "system"):
+            data = {"path": str(path), "artist": "", "title": "", "type": "dj"}
+        else:
+            artist, title = parse_track(path)
+            data = {"path": str(path), "artist": artist, "title": title, "type": "track"}
+        (cache_dir / ".now_playing.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except Exception as e:
+        _log(f"now_playing write failed: {e}")
 
 
 def _icecast_url(icecast_http: str, password: str, mount: str) -> str:
@@ -133,6 +153,9 @@ def _stream_segments(scheduler, cache_dir: Path):
                 for c in _safe_silence_chunks(cache_dir, chunk_size, 0.5):
                     yield c
                 continue
+
+            # Записать текущий сегмент для /api/now (broadcaster и web — разные процессы)
+            _write_now_playing(path, cache_dir)
 
             # Пауза между сегментами
             for c in _safe_silence_chunks(cache_dir, chunk_size, 0.05):
