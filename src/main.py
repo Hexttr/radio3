@@ -108,8 +108,8 @@ def create_app() -> Flask:
     @app.route("/api/next")
     @app.route("/next")
     def next_segment():
-        """Один сегмент — полный mp3-файл."""
-        segment = scheduler.get_segment()
+        """Превью следующего сегмента (peek) — не забирает из очереди эфира."""
+        segment = scheduler.peek_next_segment()
         if segment is None:
             return "", 204
         path = Path(segment)

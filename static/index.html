@@ -157,13 +157,30 @@
     function runEqualizerLoop() {
       if (!analyser || muted) return;
       const data = new Uint8Array(analyser.frequencyBinCount);
+      let zeroFrames = 0;
       function tick() {
         if (!playing || muted) return;
         analyser.getByteFrequencyData(data);
-        updateEqualizer(data);
+        const allZeros = data.every(v => v === 0);
+        if (allZeros && zeroFrames++ > 10) {
+          updateEqualizerSimulated();
+        } else {
+          if (!allZeros) zeroFrames = 0;
+          updateEqualizer(data);
+        }
         animationId = requestAnimationFrame(tick);
       }
       tick();
+    }
+
+    function updateEqualizerSimulated() {
+      const t = Date.now() / 80;
+      bars.forEach((bar, i) => {
+        const wave = Math.sin(t + i * 0.4) * 0.5 + 0.5;
+        const noise = Math.sin(t * 2.3 + i) * 0.2 + 0.8;
+        const h = Math.max(8, 12 + (wave * noise) * 60);
+        bar.style.height = h + 'px';
+      });
     }
 
     function createAndConnectAudio() {
@@ -211,11 +228,15 @@
       currentSource = audioContext.createMediaElementSource(audio);
       currentSource.connect(analyser);
 
+      const startPlayback = () => {
+        audio.play();
+        runEqualizerLoop();
+      };
       if (audioContext.state === 'suspended') {
-        audioContext.resume();
+        audioContext.resume().then(startPlayback).catch(startPlayback);
+      } else {
+        startPlayback();
       }
-      audio.play();
-      runEqualizerLoop();
     }
 
     function startPlayback() {

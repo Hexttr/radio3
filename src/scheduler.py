@@ -270,6 +270,11 @@ class Scheduler:
         except Empty:
             return None
 
+    def peek_next_segment(self) -> Path | None:
+        """Первый сегмент в очереди без удаления. Для /next — не красть у эфира."""
+        with self.segment_queue.mutex:
+            return self.segment_queue.queue[0] if self.segment_queue.queue else None
+
     def get_segment_nowait(self) -> Path | None:
         """Неблокирующий запрос сегмента — для stream, чтобы не останавливать выдачу байтов."""
         try:
