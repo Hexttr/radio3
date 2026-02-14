@@ -108,16 +108,30 @@ def create_app() -> Flask:
 
     @app.route("/api/now")
     def api_now():
-        """Текущий сегмент в эфире — broadcaster пишет в .now_playing.json."""
+        """Сегмент в эфире с учётом буфера плеера (~15 сек)."""
+        import time as time_module
         now_file = cache_dir / ".now_playing.json"
         if now_file.exists():
             try:
                 data = json.loads(now_file.read_text(encoding="utf-8"))
-                return jsonify({
-                    "artist": data.get("artist", ""),
-                    "title": data.get("title", ""),
-                    "type": data.get("type", ""),
-                })
+                history = data.get("history", [])
+                if history:
+                    now_ts = time_module.time()
+                    delay = 20
+                    target_ts = now_ts - delay
+                    best = None
+                    for e in history:
+                        if e["t"] <= target_ts:
+                            best = e
+                        else:
+                            break
+                    if best is None:
+                        best = history[0]
+                    return jsonify({
+                        "artist": best.get("artist", ""),
+                        "title": best.get("title", ""),
+                        "type": best.get("type", ""),
+                    })
             except Exception:
                 pass
         segment = scheduler.peek_next_segment()

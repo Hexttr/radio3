@@ -21,20 +21,27 @@ from .broadcaster import (
 from .track_parser import parse_track
 
 
-def _write_now_playing(path: Path, cache_dir: Path) -> None:
-    """Сохранить текущий сегмент в файл для /api/now."""
+def _write_now_playing(path: Path, cache_dir: Path, last_track: dict, history: list) -> None:
+    """Добавить сегмент в историю для /api/now. history — список {t, artist, title, type}."""
     try:
+        t = time.time()
         parent = path.parent.name
         if parent == "news":
-            data = {"path": str(path), "artist": "", "title": "", "type": "news"}
+            entry = {"t": t, "artist": "", "title": "", "type": "news"}
         elif parent == "weather":
-            data = {"path": str(path), "artist": "", "title": "", "type": "weather"}
+            entry = {"t": t, "artist": "", "title": "", "type": "weather"}
         elif parent in ("dj", "system"):
-            data = {"path": str(path), "artist": "", "title": "", "type": "dj"}
+            entry = {"t": t, "artist": last_track.get("artist", ""), "title": last_track.get("title", ""), "type": "dj"}
         else:
             artist, title = parse_track(path)
-            data = {"path": str(path), "artist": artist, "title": title, "type": "track"}
-        (cache_dir / ".now_playing.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            last_track["artist"], last_track["title"] = artist, title
+            entry = {"t": t, "artist": artist, "title": title, "type": "track"}
+        history.append(entry)
+        while history and t - history[0]["t"] > 300:
+            history.pop(0)
+        (cache_dir / ".now_playing.json").write_text(
+            json.dumps({"history": history}, ensure_ascii=False), encoding="utf-8"
+        )
     except Exception as e:
         _log(f"now_playing write failed: {e}")
 
@@ -139,6 +146,8 @@ def run_ffmpeg_broadcaster(scheduler, icecast_url: str, password: str, mount: st
 def _stream_segments(scheduler, cache_dir: Path):
     """Генератор: сегменты по одному, читаем файл чанками (без полной загрузки в память)."""
     chunk_size = CHUNK_SIZE
+    last_track: dict = {"artist": "", "title": ""}
+    history: list = []
     while True:
         try:
             seg = scheduler.get_segment(timeout=5.0)
@@ -154,8 +163,8 @@ def _stream_segments(scheduler, cache_dir: Path):
                     yield c
                 continue
 
-            # Записать текущий сегмент для /api/now (broadcaster и web — разные процессы)
-            _write_now_playing(path, cache_dir)
+            # Добавить в историю для /api/now (с учётом буфера плеера ~15 сек)
+            _write_now_playing(path, cache_dir, last_track, history)
 
             # Пауза между сегментами
             for c in _safe_silence_chunks(cache_dir, chunk_size, 0.05):
