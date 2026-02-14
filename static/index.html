@@ -361,7 +361,7 @@
         analyser.getByteFrequencyData(dataArray);
 
         const allZeros = dataArray.every(function(v) { return v === 0; });
-        if (allZeros && zeroFrames++ > 10) {
+        if (allZeros && zeroFrames++ > 45) {
           drawSimulatedEqualizer();
           return;
         }
@@ -404,8 +404,17 @@
 
     function drawSimulatedEqualizer() {
       let t = 0;
+      let checkCounter = 0;
+      var dataCheck = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
       function draw() {
         animFrameId = requestAnimationFrame(draw);
+        if (analyser && dataCheck && ++checkCounter % 30 === 0) {
+          analyser.getByteFrequencyData(dataCheck);
+          if (!dataCheck.every(function(v) { return v === 0; })) {
+            drawLiveEqualizer();
+            return;
+          }
+        }
         t += 0.02;
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
