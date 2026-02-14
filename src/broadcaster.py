@@ -110,7 +110,7 @@ def _safe_silence_chunks(cache_dir: Path, chunk_size: int, duration_sec: float =
             pass
 
 
-def _preload_worker(scheduler, ready_queue: Queue, stop_event: threading.Event) -> None:
+def _preload_worker(scheduler, ready_queue: Queue, stop_event: threading.Event, cache_dir: Path) -> None:
     """Фон: забирает сегменты из scheduler, читает в память, кладёт (path, data) в ready_queue."""
     while not stop_event.is_set():
         try:
@@ -119,7 +119,13 @@ def _preload_worker(scheduler, ready_queue: Queue, stop_event: threading.Event) 
                 continue
             path = Path(seg)
             if not path.exists() or path.stat().st_size == 0:
-                _log(f"Preload skip empty: {path}")
+                _log(f"Preload skip empty, using silence: {path}")
+                try:
+                    silence_data = b"".join(_get_silence_fallback(cache_dir, 16384, 0.5))
+                    if silence_data:
+                        ready_queue.put((path, silence_data))
+                except Exception:
+                    pass
                 continue
             data = path.read_bytes()
             ready_queue.put((path, data))
@@ -133,11 +139,11 @@ def stream_generator(scheduler, chunk_size: int = CHUNK_SIZE, cache_dir: Path | 
     """Бесконечный генератор с предзагрузкой. Не падает — при любой ошибке отдаёт тишину."""
     cache_dir = cache_dir or Path("cache")
     _ensure_silence_file(cache_dir)
-    ready_queue: Queue[tuple] = Queue(maxsize=2)
+    ready_queue: Queue[tuple] = Queue(maxsize=4)
     stop_event = threading.Event()
     preload_thread = threading.Thread(
         target=_preload_worker,
-        args=(scheduler, ready_queue, stop_event),
+        args=(scheduler, ready_queue, stop_event, cache_dir),
         daemon=True,
     )
     preload_thread.start()

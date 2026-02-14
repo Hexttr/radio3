@@ -234,7 +234,7 @@ class Scheduler:
     def _run_generator(self) -> None:
         while self._running:
             try:
-                while self._running and self.segment_queue.qsize() < 5:
+                while self._running and self.segment_queue.qsize() < 8:
                     self._generate_next_segments()
             except Exception:
                 pass
